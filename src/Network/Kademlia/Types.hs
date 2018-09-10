@@ -33,7 +33,8 @@ import           Data.List                  (sortBy)
 import           Data.Word                  (Word16)
 import           Data.Word                  (Word8)
 import           GHC.Generics               (Generic)
-import           Network.Socket             (PortNumber (..), SockAddr (..), inet_ntoa)
+import           Network.Socket.Classy      (MonadNetwork)
+import qualified Network.Socket.Classy      as S
 
 import           Network.Kademlia.Config    (WithConfig, getConfig)
 import qualified Network.Kademlia.Config    as C
@@ -41,13 +42,13 @@ import qualified Network.Kademlia.Config    as C
 -- | Representation of an UDP peer
 data Peer = Peer {
       peerHost :: String
-    , peerPort :: PortNumber
+    , peerPort :: S.PortNumber
     } deriving (Eq, Ord, Generic)
 
-unwrapPort :: PortNumber -> Word16
+unwrapPort :: S.PortNumber -> Word16
 unwrapPort = fromIntegral
 
-wrapPort :: Word16 -> PortNumber
+wrapPort :: Word16 -> S.PortNumber
 wrapPort = fromIntegral
 
 instance Show Peer where
@@ -110,9 +111,9 @@ distance idA idB = do
   where xor a b = not (a && b) && (a || b)
 
 -- | Try to convert a SockAddr to a Peer
-toPeer :: SockAddr -> IO (Maybe Peer)
-toPeer (SockAddrInet port host) = do
-    hostname <- inet_ntoa host
+toPeer :: (MonadNetwork m) => S.SockAddr -> m (Maybe Peer)
+toPeer (S.SockAddrInet port host) = do
+    hostname <- S.inet_ntoa host
     return $ Just $ Peer hostname port
 toPeer _ = return Nothing
 

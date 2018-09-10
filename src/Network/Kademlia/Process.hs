@@ -2,12 +2,12 @@
 -- to happen in the background to get a working Kademlia instance.
 
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Network.Kademlia.Process where
 
-import           Control.Concurrent          (ThreadId, forkIO, killThread, myThreadId)
-import           Control.Concurrent.Chan     (Chan, readChan)
-import           Control.Concurrent.STM      (atomically, readTVar, writeTVar)
+import           Control.Concurrent.Classy   (ThreadId, Chan, fork, atomically, killThread, myThreadId, readChan)
+import           Control.Concurrent.Classy.STM (readTVar, writeTVar)
 import           Control.Exception           (catch)
 import           Control.Monad               (forM_, forever, void, when)
 import           Control.Monad.Extra         (unlessM, whenM)
@@ -33,15 +33,15 @@ import           Network.Kademlia.Types      (Command (..), Node (..), Peer (..)
 import           Network.Kademlia.Utils      (threadDelay)
 
 -- | Start the background process for a KademliaInstance
-start :: (Show i, Serialize i, Ord i, Serialize a, Eq a) =>
-         KademliaInstance i a -> IO ()
+start :: (Show i, Serialize i, Ord i, Serialize a, Eq a, Eq (Chan IO (Reply i a))) =>
+         KademliaInstance IO i a -> IO ()
 start inst = do
     let rq = replyQueue $ handle inst
     startRecvProcess . handle $ inst
-    receivingId <- forkIO $ receivingProcess inst
-    pingId <- forkIO $ pingProcess inst $ requestChan rq
-    spreadId <- forkIO $ spreadValueProcess inst
-    void . forkIO $ backgroundProcess inst (requestChan rq) [pingId, spreadId, receivingId]
+    receivingId <- fork $ receivingProcess inst
+    pingId <- fork $ pingProcess inst $ requestChan rq
+    spreadId <- fork $ spreadValueProcess inst
+    void . fork $ backgroundProcess inst (requestChan rq) [pingId, spreadId, receivingId]
 
 ----------------------------------------------------------------------------
 -- Main Processes
@@ -50,8 +50,8 @@ start inst = do
 
 -- | The central process all Replys go trough
 receivingProcess
-    :: (Show i, Serialize i, Ord i)
-    => KademliaInstance i a
+    :: (Show i, Serialize i, Ord i, Eq (Chan IO (Reply i a)))
+    => KademliaInstance IO i a
     -> IO ()
 receivingProcess inst@(KI _ h _ _ _) = forever . (`catch` logError' h) $ do
     let rq = replyQueue h
@@ -67,10 +67,10 @@ receivingProcess inst@(KI _ h _ _ _) = forever . (`catch` logError' h) $ do
     isResponse _                                        = False
 
 receivingProcessDo
-    :: (Show i, Serialize i, Ord i)
-    => KademliaInstance i a
+    :: (Show i, Serialize i, Ord i, Eq (Chan IO (Reply i a)))
+    => KademliaInstance IO i a
     -> Reply i a
-    -> ReplyQueue i a
+    -> ReplyQueue IO i a
     -> IO ()
 receivingProcessDo inst@(KI _ h _ _ cfg) reply rq = do
     logInfo h $ "Received reply: " ++ show reply
@@ -125,7 +125,7 @@ receivingProcessDo inst@(KI _ h _ _ cfg) reply rq = do
 
 -- | The actual process running in the background
 backgroundProcess :: (Show i, Serialize i, Ord i, Serialize a, Eq a) =>
-    KademliaInstance i a -> Chan (Reply i a) -> [ThreadId] -> IO ()
+    KademliaInstance IO i a -> Chan IO (Reply i a) -> [ThreadId IO] -> IO ()
 backgroundProcess inst@(KI _ h _ _ _) chan threadIds = do
     reply <- liftIO . readChan $ chan
 
@@ -157,8 +157,8 @@ backgroundProcess inst@(KI _ h _ _ _) chan threadIds = do
             insertNode inst node
 
 -- | Ping all known nodes every five minutes to make sure they are still present
-pingProcess :: KademliaInstance i a
-            -> Chan (Reply i a)
+pingProcess :: KademliaInstance IO i a
+            -> Chan IO (Reply i a)
             -> IO ()
 pingProcess (KI _ h (KS sTree _ _) _ cfg) chan = forever . (`catch` logError' h) $ do
     threadDelay (pingTime cfg)
@@ -172,7 +172,7 @@ pingProcess (KI _ h (KS sTree _ _) _ cfg) chan = forever . (`catch` logError' h)
 
 -- | Handles the differendt Kademlia Commands appropriately
 handleCommand :: (Serialize i, Ord i) =>
-    Command i a -> Peer -> KademliaInstance i a -> IO ()
+    Command i a -> Peer -> KademliaInstance IO i a -> IO ()
 -- Simply answer a PING with a PONG
 handleCommand PING peer inst = send (handle inst) peer PONG
 -- Return a KBucket with the closest Nodes
@@ -180,7 +180,7 @@ handleCommand (FIND_NODE nid) peer inst = returnNodes peer nid inst
 -- Insert the value into the values store and start the expiration process
 handleCommand (STORE key value) _ inst = do
     insertValue key value inst
-    void . forkIO . expirationProcess inst $ key
+    void . fork . expirationProcess inst $ key
 -- Return the value, if known, or the closest other known Nodes
 handleCommand (FIND_VALUE key) peer inst = do
     result <- lookupValue key inst
@@ -192,7 +192,7 @@ handleCommand _ _ _ = return ()
 -- | Store all values stored in the node in the 'k' closest known nodes every hour
 spreadValueProcess
     :: (Serialize i)
-    => KademliaInstance i a -> IO ()
+    => KademliaInstance IO i a -> IO ()
 spreadValueProcess (KI _ h (KS sTree _ sValues) _ cfg) = forever . (`catch` logError' h) . void $ do
     threadDelay (storeValueTime cfg)
 
@@ -213,7 +213,7 @@ spreadValueProcess (KI _ h (KS sTree _ sValues) _ cfg) = forever . (`catch` logE
           mapMWithKey f m = sequence . map snd . M.toList . M.mapWithKey f $ m
 
 -- | Delete a value after a certain amount of time has passed
-expirationProcess :: (Ord i) => KademliaInstance i a -> i -> IO ()
+expirationProcess :: (Ord i) => KademliaInstance IO i a -> i -> IO ()
 expirationProcess inst@(KI _ _ _ valueTs cfg) key = do
     -- Map own ThreadId to the key
     myTId <- myThreadId
@@ -230,7 +230,7 @@ expirationProcess inst@(KI _ _ _ valueTs cfg) key = do
 
 -- | Return a KBucket with the closest Nodes to a supplied Id
 returnNodes :: (Serialize i, Ord i) =>
-    Peer -> i -> KademliaInstance i a -> IO ()
+    Peer -> i -> KademliaInstance IO i a -> IO ()
 returnNodes peer nid (KI ourNode h (KS sTree _ _) _ cfg@KademliaConfig {..}) = do
     tree           <- atomically . readTVar $ sTree
     rndGen         <- newStdGen
@@ -247,13 +247,13 @@ returnNodes peer nid (KI ourNode h (KS sTree _ _) _ cfg@KademliaConfig {..}) = d
     liftIO $ send h peer (RETURN_NODES 1 nid nodes)
 
 -- Send PING and expect a PONG
-sendPing :: KademliaHandle i a -> Node i -> Chan (Reply i a) -> IO ()
+sendPing :: KademliaHandle IO i a -> Node i -> Chan IO (Reply i a) -> IO ()
 sendPing h node chan = do
     expect h (RR [R_PONG] (peer node)) $ chan
     send h (peer node) PING
 
 -- | Signal a Node's timeout and retur wether it should be repinged
-timeoutNode :: (Serialize i, Ord i) => KademliaInstance i a -> Peer -> IO Bool
+timeoutNode :: (Serialize i, Ord i) => KademliaInstance IO i a -> Peer -> IO Bool
 timeoutNode (KI _ _ (KS sTree _ _) _ cfg) peer = do
     currentTime <- floor <$> getPOSIXTime
     atomically $ do

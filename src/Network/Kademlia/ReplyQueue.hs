@@ -1,4 +1,4 @@
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ViewPatterns, FlexibleContexts #-}
 {-|
 Module      : Network.Kademlia.ReplyQueue
 Description : A queue allowing to register handlers for expected replies
@@ -22,16 +22,19 @@ module Network.Kademlia.ReplyQueue
     , flush
     ) where
 
-import           Control.Concurrent     (Chan, ThreadId, forkIO, killThread, newChan,
-                                         writeChan)
-import           Control.Concurrent.STM (TVar, atomically, newTVar, readTVar, readTVarIO,
-                                         writeTVar)
-import           Control.Monad          (forM_)
-import           Data.List              (delete, find)
-import           Data.Maybe             (isJust)
+import           Control.Concurrent.Classy     (MonadConc (STM), Chan, ThreadId,
+                                                atomically, fork, killThread,
+                                                newChan, writeChan,
+                                                readTVarConc)
+import           Control.Concurrent.Classy.STM (TVar, newTVar, readTVar,
+                                                writeTVar)
+import           Control.Monad                 (forM_)
+import           Data.List                     (delete, find)
+import           Data.Maybe                    (isJust)
 
-import           Network.Kademlia.Types (Command (..), Node (..), Peer, Signal (..))
-import           Network.Kademlia.Utils (threadDelay)
+import           Network.Kademlia.Types        (Command (..), Node (..), Peer,
+                                                Signal (..))
+import           Network.Kademlia.Utils        (threadDelay)
 
 -- | The different types a replied signal could possibly have.
 --
@@ -77,44 +80,52 @@ data Reply i a = Answer (Signal i a)
                  deriving (Eq, Show)
 
 -- | The actual type representing a ReplyQueue
-data ReplyQueue i a = RQ {
-      queue        :: (TVar [(ReplyRegistration i, Chan (Reply i a), ThreadId)])
-    -- ^ Queue of expected responses
-    , dispatchChan :: Chan (Reply i a)
-    -- ^ Channel for initial receiving of messages.
-    -- Messages from this channel will be dispatched (via @dispatch@)
-    , requestChan  :: Chan (Reply i a)
-    -- ^ This channels needed for accepting requests from nodes.
-    -- Only request will be processed, reply will be ignored.
-    , logInfo      :: String -> IO ()
-    , logError     :: String -> IO ()
+data ReplyQueue m i a
+  = RQ
+    { queue        :: (TVar (STM m) [(ReplyRegistration i, Chan m (Reply i a), ThreadId m)])
+      -- ^ Queue of expected responses
+    , dispatchChan :: Chan m (Reply i a)
+      -- ^ Channel for initial receiving of messages.
+      -- Messages from this channel will be dispatched (via @dispatch@)
+    , requestChan  :: Chan m (Reply i a)
+      -- ^ This channels needed for accepting requests from nodes.
+      -- Only request will be processed, reply will be ignored.
+    , logInfo      :: String -> m ()
+    , logError     :: String -> m ()
     }
 
 
 -- | Create a new ReplyQueue
-emptyReplyQueue :: IO (ReplyQueue i a)
+emptyReplyQueue
+  :: (MonadConc m) => m (ReplyQueue m i a)
 emptyReplyQueue = emptyReplyQueueL (const $ pure ()) (const $ pure ())
 
 -- | Create a new ReplyQueue with loggers
-emptyReplyQueueL :: (String -> IO ()) -> (String -> IO ()) -> IO (ReplyQueue i a)
+emptyReplyQueueL
+  :: (MonadConc m) => (String -> m ()) -> (String -> m ()) -> m (ReplyQueue m i a)
 emptyReplyQueueL logInfo logError =
     RQ <$> (atomically . newTVar $ []) <*> newChan <*> newChan <*> pure logInfo <*>
     pure logError
 
 -- | Register a channel as handler for a reply
 register
-    :: ReplyRegistration i
-    -> ReplyQueue i a
-    -> Chan (Reply i a)
-    -> IO ()
+  :: (MonadConc m)
+  => ReplyRegistration i
+  -> ReplyQueue m i a
+  -> Chan m (Reply i a)
+  -> m ()
 register reg rq chan = do
     tId <- timeoutThread reg rq
     atomically $ do
         rQueue <- readTVar $ queue rq
         writeTVar (queue rq) $ rQueue ++ [(reg, chan, tId)]
 
-timeoutThread :: ReplyRegistration i -> ReplyQueue i a -> IO ThreadId
-timeoutThread reg rq = forkIO $ do
+timeoutThread
+  :: (MonadConc m)
+  => ReplyRegistration i
+  -> ReplyQueue m i a
+  -> m (ThreadId m)
+timeoutThread reg rq = fork $ do
     -- Wait 5 seconds
     threadDelay 5
 
@@ -127,7 +138,7 @@ timeoutThread reg rq = forkIO $ do
 
 -- | Dispatch a reply over a registered handler. If there is no handler,
 --   dispatch it to the default one.
-dispatch :: (Show i, Eq i) => Reply i a -> ReplyQueue i a -> IO ()
+dispatch :: (Show i, Eq i, Eq (Chan m (Reply i a)), MonadConc m) => Reply i a -> ReplyQueue m i a -> m ()
 dispatch reply rq = do
     -- Try to find a registration matching the reply
     result <- atomically $ do
@@ -157,15 +168,17 @@ dispatch reply rq = do
 
     where matches regA (regB, _, _) = matchRegistrations regA regB
 
-expectedReply :: (Show i, Eq i) => Reply i a -> ReplyQueue i a -> IO Bool
+expectedReply
+  :: (Show i, Eq i, MonadConc m)
+  => Reply i a -> ReplyQueue m i a -> m Bool
 expectedReply (toRegistration -> reply) rq
-    | Just repReg <- reply = isJust . find (matches repReg) <$> (readTVarIO $ queue rq)
+    | Just repReg <- reply = isJust . find (matches repReg) <$> (readTVarConc $ queue rq)
     | otherwise = pure False
   where
     matches regA (regB, _, _) = matchRegistrations regA regB
 
 -- | Send Closed signal to all handlers and empty ReplyQueue
-flush :: ReplyQueue i a -> IO ()
+flush :: (MonadConc m) => ReplyQueue m i a -> m ()
 flush rq = do
     rQueue <- atomically $ do
         rQueue <- readTVar . queue $ rq

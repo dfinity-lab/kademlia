@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 {-|
 Module      : Network.Kademlia
 Description : Implementation of the Kademlia DHT
@@ -141,6 +143,8 @@ module Network.Kademlia
        , Peer(..)
        ) where
 
+import           Control.Concurrent.Classy       (Chan)
+
 import           Data.Word                       (Word16)
 import           Network.Kademlia.Config
 import           Network.Kademlia.Implementation as I
@@ -154,24 +158,26 @@ import           Prelude                         hiding (lookup)
 
 -- | Create a new KademliaInstance corresponding to a given Id on a given port
 create
-    :: (Show i, Serialize i, Ord i, Serialize a, Eq a)
+    :: (Show i, Serialize i, Ord i, Serialize a, Eq a,
+        Eq (Chan IO (Reply i a)))
     => (String, Word16) -- ^ Bind address
     -> (String, Word16) -- ^ External address
     -> i
-    -> IO (KademliaInstance i a)
+    -> IO (KademliaInstance IO i a)
 create bindAddr extAddr id' =
     createL bindAddr extAddr id' defaultConfig (const $ pure ()) (const $ pure ())
 
 -- | Same as create, but with logging
 createL
-    :: (Show i, Serialize i, Ord i, Serialize a, Eq a)
+    :: (Show i, Serialize i, Ord i, Serialize a, Eq a,
+        Eq (Chan IO (Reply i a)))
     => (String, Word16) -- ^ Bind address
     -> (String, Word16) -- ^ External address
     -> i
     -> KademliaConfig
     -> (String -> IO ())
     -> (String -> IO ())
-    -> IO (KademliaInstance i a)
+    -> IO (KademliaInstance IO i a)
 createL (host, port) extAddr id' cfg logInfo logError = do
     rq <- emptyReplyQueueL logInfo logError
     let lim = msgSizeLimit cfg
@@ -181,14 +187,15 @@ createL (host, port) extAddr id' cfg logInfo logError = do
 
 -- | Create instance from snapshot with logging
 createLFromSnapshot
-    :: (Show i, Serialize i, Ord i, Serialize a, Eq a)
+    :: (Show i, Serialize i, Ord i, Serialize a, Eq a,
+        Eq (Chan IO (Reply i a)))
     => (String, Word16) -- ^ Bind address
     -> (String, Word16) -- ^ External address
     -> KademliaConfig
     -> KademliaSnapshot i
     -> (String -> IO ())
     -> (String -> IO ())
-    -> IO (KademliaInstance i a)
+    -> IO (KademliaInstance IO i a)
 createLFromSnapshot (host, port) extAddr cfg snapshot logInfo logError = do
     rq <- emptyReplyQueueL logInfo logError
     let lim = msgSizeLimit cfg
@@ -198,9 +205,9 @@ createLFromSnapshot (host, port) extAddr cfg snapshot logInfo logError = do
     inst <$ start inst
 
 -- | Stop a KademliaInstance by closing it
-close :: KademliaInstance i a -> IO ()
+close :: KademliaInstance IO i a -> IO ()
 close = closeK . handle
 
 -- | Run WithConfig action using given kademlia instance
-usingKademliaInstance :: WithConfig a -> KademliaInstance i v -> a
+usingKademliaInstance :: WithConfig a -> KademliaInstance IO i v -> a
 usingKademliaInstance f = usingConfig f . config

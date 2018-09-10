@@ -18,8 +18,8 @@ module Network.Kademlia.Implementation
 
 import           Prelude                     hiding (lookup)
 
-import           Control.Concurrent.Chan     (Chan, newChan, readChan)
-import           Control.Concurrent.STM      (atomically, readTVar)
+import           Control.Concurrent.Classy   (atomically, Chan, newChan, readChan)
+import           Control.Concurrent.Classy.STM (readTVar)
 import           Control.Monad               (when)
 import           Control.Monad               (forM_, unless)
 import           Control.Monad.Extra         (unlessM)
@@ -47,7 +47,7 @@ import           Network.Kademlia.Types      (Command (..), Node (..), Peer,
 --   with the Node that was the first to answer the lookup
 lookup
     :: (Serialize i, Serialize a, Ord i)
-    => KademliaInstance i a -> i -> IO (Maybe (a, Node i))
+    => KademliaInstance IO i a -> i -> IO (Maybe (a, Node i))
 lookup inst nid = runLookup go inst nid
   where
     go = startLookup (config inst) sendS cancel checkSignal
@@ -105,7 +105,7 @@ lookup inst nid = runLookup go inst nid
 -- | Store assign a value to a key and store it in the DHT
 store
     :: (Serialize i, Serialize a, Ord i)
-    => KademliaInstance i a -> i -> a -> IO ()
+    => KademliaInstance IO i a -> i -> a -> IO ()
 store inst key val = runLookup go inst key
   where
     go = startLookup (config inst) sendS end checkSignal
@@ -151,7 +151,7 @@ data JoinResult
 -- | Make a KademliaInstance join the network a supplied Node is in
 joinNetwork
     :: (Serialize i, Serialize a, Ord i)
-    => KademliaInstance i a -> Peer -> IO JoinResult
+    => KademliaInstance IO i a -> Peer -> IO JoinResult
 joinNetwork inst initPeer = ownId >>= runLookup go inst
   where
     go = do
@@ -200,7 +200,7 @@ joinNetwork inst initPeer = ownId >>= runLookup go inst
 -- | Lookup the Node corresponding to the supplied ID
 lookupNode
     :: forall i a . (Serialize i, Serialize a, Ord i)
-    => KademliaInstance i a -> i -> IO (Maybe (Node i))
+    => KademliaInstance IO i a -> i -> IO (Maybe (Node i))
 lookupNode inst nid = runLookup go inst nid
   where
     go :: LookupM i a (Maybe (Node i))
@@ -236,9 +236,9 @@ lookupNode inst nid = runLookup go inst nid
 
 -- | The state of a lookup
 data LookupState i a = LookupState
-    { inst      :: !(KademliaInstance i a)
+    { inst      :: !(KademliaInstance IO i a)
     , targetId  :: !i
-    , replyChan :: !(Chan (Reply i a))
+    , replyChan :: !(Chan IO (Reply i a))
     , known     :: ![Node i]
     , pending   :: !(M.Map (Node i) Word8)
     , polled    :: ![Node i]
@@ -248,7 +248,7 @@ data LookupState i a = LookupState
 type LookupM i a = StateT (LookupState i a) IO
 
 -- Run a LookupM, returning its result
-runLookup :: Ord i => LookupM i a b -> KademliaInstance i a -> i -> IO b
+runLookup :: Ord i => LookupM i a b -> KademliaInstance IO i a -> i -> IO b
 runLookup lookupM inst nid = do
     chan <- newChan
     let state = LookupState inst nid chan mempty mempty mempty
@@ -410,13 +410,13 @@ continueLookup nodes signalAction continue end = do
     -- Stop recursive lookup
         end
   where
-    allClosestPolled :: (Eq i, Serialize i) => KademliaInstance i a -> [Node i] -> LookupM i a Bool
+    allClosestPolled :: (Eq i, Serialize i) => KademliaInstance IO i a -> [Node i] -> LookupM i a Bool
     allClosestPolled inst known = do
         polled       <- gets polled
         closestKnown <- closest inst known
         pure . all (`elem` polled) $ closestKnown
 
-    closest :: Serialize i => KademliaInstance i a -> [Node i] -> LookupM i a [Node i]
+    closest :: Serialize i => KademliaInstance IO i a -> [Node i] -> LookupM i a [Node i]
     closest inst known = do
         cid    <- gets targetId
         polled <- gets polled

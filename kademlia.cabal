@@ -43,10 +43,13 @@ library
                        Network.Kademlia.Tree
                        Network.Kademlia.Types
                        Network.Kademlia.Utils
+                       Network.Socket.Classy
 
   build-depends:       base                >= 4.7 && < 5
                      , bytestring          >= 0.10.2 && < 0.11
+                     , concurrency
                      , containers          >= 0.5.5.1
+                     , exceptions
                      , extra               >= 1.4
                      , memory
                      , MonadRandom
