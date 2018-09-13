@@ -15,7 +15,7 @@ import           Control.Monad               (forM_, forever, void, when)
 import           Control.Monad.Extra         (unlessM, whenM)
 import           Control.Monad.IO.Class      (liftIO)
 import qualified Data.Map                    as M
-import           Data.Maybe                  (fromJust, isJust)
+import           Data.Maybe                  (isNothing)
 import           Data.Time.Clock.POSIX       (getPOSIXTime)
 import           System.Random               (newStdGen)
 
@@ -107,7 +107,7 @@ receivingProcessDo inst@(KademliaInstance _ h _ _ cfg) reply rq = do
                 tree <- retrieve stateTree
 
                 -- This node is not yet known
-                when (not . isJust $ T.lookup tree originId `usingConfig` cfg) $ do
+                when (isNothing $ T.lookup tree originId `usingConfig` cfg) $ do
                     let closestKnown = T.findClosest tree originId 1 `usingConfig` cfg
                     let ownId        = T.extractId tree `usingConfig` cfg
                     let self         = node { nodeId = ownId }
@@ -228,7 +228,7 @@ expirationProcess inst@(KademliaInstance _ _ _ valueTs cfg) key = do
         return . M.lookup key $ threadIds
 
     -- Kill the old timeout thread, if it exists
-    when (isJust oldTId) (killThread . fromJust $ oldTId)
+    mapM_ killThread oldTId
 
     threadDelay (configExpirationTime cfg)
     deleteValue key inst
