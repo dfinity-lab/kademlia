@@ -39,16 +39,18 @@ import           Network.Kademlia.Utils (threadDelay)
 --   Note that these are only those Command types, which are replies to some
 --   sort of request. Therefore, most Command types aren't contained in this
 --   type.
-data ReplyType i = R_PONG
-                 | R_RETURN_VALUE i
-                 | R_RETURN_NODES i
-                   deriving (Eq, Show)
+data ReplyType i
+  = R_PONG
+  | R_RETURN_NODES i
+  deriving (Eq, Show)
 
 -- | The representation of registered replies
-data ReplyRegistration i = RR {
-      replyTypes  :: [ReplyType i]
+data ReplyRegistration i
+  = RR -- FIXME
+    { replyTypes  :: [ReplyType i]
     , replyOrigin :: Peer
-    } deriving (Eq, Show)
+    }
+  deriving (Eq, Show)
 
 -- | Convert a Signal into its ReplyRegistration representation
 toRegistration :: Reply i a -> Maybe (ReplyRegistration i)
@@ -62,7 +64,6 @@ toRegistration (Answer sig)  = case rType (signalCommand sig) of
 
     rType :: Command i a -> Maybe (ReplyType i)
     rType PONG                   = Just  R_PONG
-    rType (RETURN_VALUE nid _)   = Just (R_RETURN_VALUE nid)
     rType (RETURN_NODES _ nid _) = Just (R_RETURN_NODES nid)
     rType _                      = Nothing
 

@@ -121,8 +121,6 @@ module Network.Kademlia
        , createLFromSnapshot
        , defaultConfig
        , close
-       , I.lookup
-       , I.store
        , I.lookupNode
        , I.joinNetwork
        , viewBuckets

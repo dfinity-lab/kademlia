@@ -30,11 +30,8 @@ import           Network.Kademlia.Types
 commandId :: Command i a -> Word8
 commandId PING                 = 0
 commandId PONG                 = 1
-commandId (STORE _ _)          = 2
-commandId (FIND_NODE _)        = 3
-commandId (RETURN_NODES _ _ _) = 4
-commandId (FIND_VALUE _)       = 5
-commandId (RETURN_VALUE _ _)   = 6
+commandId (FIND_NODE _)        = 2
+commandId (RETURN_NODES _ _ _) = 3
 
 -- | Turn the command arguments into a ByteString, which fits into specified size.
 -- Remaining part of command would be also returned, if any.
@@ -68,10 +65,7 @@ serialize size (toBS -> myId) cmd =
     cId = commandId cmd
     commandArgs' PING                 = B.empty
     commandArgs' PONG                 = B.empty
-    commandArgs' (STORE k v)          = toBS k `B.append` toBS v
     commandArgs' (FIND_NODE nid)      = toBS nid
-    commandArgs' (FIND_VALUE k)       = toBS k
-    commandArgs' (RETURN_VALUE nid v) = toBS nid `B.append` toBS v
     commandArgs' (RETURN_NODES _ _ _) = error "Don't know what to do with this case :("
 
 nodeToArg :: (Serialize i) => Node i -> B.ByteString

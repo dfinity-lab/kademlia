@@ -9,10 +9,8 @@ different Kademlia Network Algorithms.
 -}
 
 module Network.Kademlia.Implementation
-    ( lookup
-    , store
-    , joinNetwork
-    , JoinResult(..)
+    ( joinNetwork
+    , JoinResult (..)
     , Network.Kademlia.Implementation.lookupNode
     ) where
 
@@ -44,110 +42,13 @@ import           Network.Kademlia.Types
 -- Interface
 ----------------------------------------------------------------------------
 
--- | Lookup the value corresponding to a key in the DHT and return it, together
---   with the Node that was the first to answer the lookup
-lookup
-    :: (Serialize i, Serialize a, Ord i)
-    => KademliaInstance i a -> i -> IO (Maybe (a, Node i))
-lookup inst nid = runLookup go inst nid
-  where
-    go = startLookup (instanceConfig inst) sendS cancel checkSignal
-
-    -- Return Nothing on lookup failure
-    cancel = pure Nothing
-
-    -- When receiving a RETURN_VALUE command, finish the lookup, then
-    -- cache the value in the closest peer that didn't return it and
-    -- finally return the value
-    checkSignal (Signal origin (RETURN_VALUE _ value)) = do
-        -- Abuse the known list for saving the peers that are *known* to
-        -- store the value
-        modify $ \s -> s { lookupStateKnown = [origin] }
-
-        -- Finish the lookup, recording which nodes returned the value
-        finish
-
-        -- Store the value in the closest peer that didn't return the
-        -- value
-        known <- gets lookupStateKnown
-        polled <- gets lookupStatePolled
-        let rest = polled \\ known
-        unless (null rest) $ do
-            let cachePeer = nodePeer $ head $ sortByDistanceTo rest nid `usingConfig` instanceConfig inst
-            liftIO . send (instanceHandle inst) cachePeer . STORE nid $ value
-
-        -- Return the value
-        pure . Just $ (value, origin)
-
-    -- When receiving a RETURN_NODES command, throw the nodes into the
-    -- lookup loop and continue the lookup
-    checkSignal (Signal _ (RETURN_NODES _ _ nodes)) =
-        continueLookup nodes sendS continue cancel
-    checkSignal _ = error "Fundamental error in unhandled query @lookup@"
-
-    -- Continuing always means waiting for the next signal
-    continue = waitForReply cancel checkSignal
-
-    -- Send a FIND_VALUE command, looking for the supplied id
-    sendS = sendSignal (FIND_VALUE nid)
-
-    -- As long as there still are pending requests, wait for the next one
-    finish = do
-        pending <- gets lookupStatePending
-        unless (null pending) $ waitForReply (return ()) finishCheck
-
-    -- Record the nodes which return the value
-    finishCheck (Signal origin (RETURN_VALUE _ _)) = do
-        known <- gets lookupStateKnown
-        modify $ \s -> s { lookupStateKnown = origin:known }
-        finish
-    finishCheck _ = finish
-
--- | Store assign a value to a key and store it in the DHT
-store
-    :: (Serialize i, Serialize a, Ord i)
-    => KademliaInstance i a -> i -> a -> IO ()
-store inst key val = runLookup go inst key
-  where
-    go = startLookup (instanceConfig inst) sendS end checkSignal
-
-    -- Always add the nodes into the loop and continue the lookup
-    checkSignal (Signal _ (RETURN_NODES _ _ nodes)) =
-        continueLookup nodes sendS continue end
-    checkSignal _ = error "Meet unknown signal in store"
-
-    -- Continuing always means waiting for the next signal
-    continue = waitForReply end checkSignal
-
-    -- Send a FIND_NODE command, looking for the node corresponding to the
-    -- key
-    sendS = sendSignal (FIND_NODE key)
-
-    -- Run the lookup as long as possible, to make sure the nodes closest
-    -- to the key were polled.
-    end = do
-        polled <- gets lookupStatePolled
-
-        unless (null polled) $ do
-            let h = instanceHandle inst
-                k' = configK $ instanceConfig inst
-                -- Don't select more than k peers
-                peerNum = if length polled > k' then k' else length polled
-                -- Select the peers closest to the key
-                storePeers =
-                    map nodePeer . take peerNum $ sortByDistanceTo polled key `usingConfig` instanceConfig inst
-
-            -- Send them a STORE command
-            forM_ storePeers $
-                \storePeer -> liftIO . send h storePeer . STORE key $ val
-
 -- | The different possible results of joinNetwork
 data JoinResult
-    = JoinSuccess
-    | NodeDown
-    | IDClash
-    | NodeBanned
-    deriving (Eq, Ord, Show)
+  = JoinSuccess
+  | NodeDown
+  | IDClash
+  | NodeBanned
+  deriving (Eq, Ord, Show)
 
 -- | Make a KademliaInstance join the network a supplied Node is in
 joinNetwork
@@ -186,7 +87,7 @@ joinNetwork inst initPeer = ownId >>= runLookup go inst
         --     _      -> continueLookup nodes sendS continue finish
         continueLookup nodes sendS continue finish
 
-    checkSignal _ = error "Unknow signal for @joinNetwork@"
+    checkSignal _ = error "Unknown signal for @joinNetwork@"
 
     -- Continuing always means waiting for the next signal
     continue = waitForReply finish checkSignal
@@ -449,10 +350,8 @@ sendSignalWithoutPolled cmd peer = do
   where
     -- Determine the appropriate ReplyRegistrations to the command
     regs = case cmd of
-        FIND_NODE nid  -> RR [R_RETURN_NODES nid] peer
-        FIND_VALUE nid ->
-            RR [R_RETURN_NODES nid, R_RETURN_VALUE nid] peer
-        _               -> error "Unknown command at @sendSignal@"
+        FIND_NODE nid -> RR [R_RETURN_NODES nid] peer
+        _             -> error "Unknown command at @sendSignal@"
 
 -- Send a signal to a node
 sendSignal
