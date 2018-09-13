@@ -46,23 +46,26 @@ import           Network.Kademlia.Types
                  fromByteStruct, sortByDistanceTo, toByteStruct)
 
 data NodeTree i
-    = NodeTree
-    { ntOwnId :: ByteStruct
-    , ntRoot  :: NodeTreeElem i
-    , ntPeers :: M.Map Peer i
-    } deriving (Generic)
+  = NodeTree
+    { nodeTreeOwnId :: ByteStruct
+    , nodeTreeRoot  :: NodeTreeElem i
+    , nodeTreePeers :: M.Map Peer i
+    }
+  deriving (Generic)
 
-data PingInfo = PingInfo
-    { lastSeenTimestamp :: Timestamp
-    } deriving (Generic, Eq)
+data PingInfo
+  = PingInfo
+    { pingInfoLastSeen :: Timestamp
+    }
+  deriving (Generic, Eq)
 
 data NodeTreeElem i
-    = Split (NodeTreeElem i) (NodeTreeElem i)
-    | Bucket ([(Node i, PingInfo)], [Node i])
-    deriving (Generic)
+  = Split (NodeTreeElem i) (NodeTreeElem i)
+  | Bucket ([(Node i, PingInfo)], [Node i])
+  deriving (Generic)
 
 type NodeTreeFunction i a
-    = Int
+  = Int
     -> Bool
     -> M.Map Peer i
     -> ([(Node i, PingInfo)], [Node i])
@@ -83,7 +86,7 @@ lookup tree nid = applyAt tree nid f
 
 -- | Delete a Node corresponding to a supplied Id from a NodeTree
 delete :: (Serialize i, Eq i) => NodeTree i -> Peer -> WithConfig (NodeTree i)
-delete tree peer = flip (maybe $ pure tree) (M.lookup peer (ntPeers tree)) $ \nid ->
+delete tree peer = flip (maybe $ pure tree) (M.lookup peer (nodeTreePeers tree)) $ \nid ->
     modifyAt tree nid (f nid)
   where
     f nid _ _ peers (nodes, cache) =
@@ -94,7 +97,7 @@ delete tree peer = flip (maybe $ pure tree) (M.lookup peer (ntPeers tree)) $ \ni
 --  if the count exceeds the limit. Also, return wether it's reasonable to ping
 --  the node again.
 handleTimeout :: (Serialize i, Eq i) => Timestamp -> NodeTree i -> Peer -> WithConfig (NodeTree i, Bool)
-handleTimeout currentTime tree pr = flip (maybe $ pure (tree, False)) (M.lookup pr (ntPeers tree)) $ \nid -> do
+handleTimeout currentTime tree pr = flip (maybe $ pure (tree, False)) (M.lookup pr (nodeTreePeers tree)) $ \nid -> do
     KademliaConfig {..} <- getConfig
     let acceptDiff = (fromIntegral configPingLimit) * (fromIntegral configPingTime)
     let f _ _ peers (nodes, cache) = return $ case L.find (idMatches nid . fst) nodes of
@@ -245,7 +248,7 @@ toView (NodeTree bs treeElems _) = go bs treeElems []
     -- Else go right first
     go (True:is)  (Split left right) = go is right . go is left
     go _          (Split _    _    ) = error "toView: unexpected Split"
-    go _          (Bucket (b, _))    = (map (second lastSeenTimestamp) b :)
+    go _          (Bucket (b, _))    = (map (second pingInfoLastSeen) b :)
 
 -- | Turn the NodeTree into a list of nodes
 toList :: NodeTree i -> [(Node i, Timestamp)]
@@ -323,4 +326,3 @@ modifyApplyAt (NodeTree idStruct treeElem peers) nid f = do
         (new, mpeers, val) <- go is ts (depth + 1) (valid && i) right
         pure (Split left new, mpeers, val)
     go _ _ _ _ _ = error "Fundamental error in @go@ function in 'bothAt'"
-

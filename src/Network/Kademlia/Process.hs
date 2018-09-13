@@ -154,9 +154,9 @@ backgroundProcess inst@(KademliaInstance _ h _ _ _) chan threadIds = do
     repeatBP = backgroundProcess inst chan threadIds
     handleAnswer sig@(Signal (Node peer _) _) =
         unlessM (isNodeBanned inst peer) $ do
-            let node = source sig
+            let node = signalSource sig
             -- Handle the signal
-            handleCommand (command sig) peer inst
+            handleCommand (signalCommand sig) peer inst
             -- Insert the node into the tree, if it's already known, it will
             -- be refreshed
             insertNode inst node

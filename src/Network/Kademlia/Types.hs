@@ -40,10 +40,12 @@ import           Network.Kademlia.Config (WithConfig, getConfig)
 import qualified Network.Kademlia.Config as C
 
 -- | Representation of an UDP peer
-data Peer = Peer {
-      peerHost :: String
+data Peer
+  = Peer
+    { peerHost :: String
     , peerPort :: PortNumber
-    } deriving (Eq, Ord, Generic)
+    }
+  deriving (Eq, Ord, Generic)
 
 unwrapPort :: PortNumber -> Word16
 unwrapPort = fromIntegral
@@ -55,10 +57,12 @@ instance Show Peer where
     show (Peer h p) = h ++ ":" ++ show p
 
 -- | Representation of a Kademlia Node, containing a Peer and an Id
-data Node i = Node {
-      nodePeer :: Peer
+data Node i
+  = Node
+    { nodePeer :: Peer
     , nodeId   :: i
-    } deriving (Eq, Ord, Generic)
+    }
+  deriving (Eq, Ord, Generic)
 
 instance Show i => Show (Node i) where
   show (Node peer ident) = show peer ++ " (" ++ show ident ++ ")"
@@ -74,8 +78,8 @@ sortByDistanceTo bucket nid = do
 
 -- | A structure serializable into and parsable from a ByteString
 class Serialize a where
-    fromBS :: B.ByteString -> Either String (a, B.ByteString)
-    toBS :: a -> B.ByteString
+  fromBS :: B.ByteString -> Either String (a, B.ByteString)
+  toBS :: a -> B.ByteString
 
 -- | A Structure made up of bits, represented as a list of Bools
 type ByteStruct = [Bool]
@@ -118,20 +122,23 @@ toPeer (SockAddrInet port host) = do
 toPeer _ = return Nothing
 
 -- | Representation of a protocl signal
-data Signal i v = Signal {
-      source  :: Node i
-    , command :: Command i v
-    } deriving (Show, Eq)
+data Signal i v
+  = Signal
+    { signalSource  :: Node i
+    , signalCommand :: Command i v
+    }
+  deriving (Show, Eq)
 
 -- | Representations of the different protocol commands
-data Command i a = PING
-                 | PONG
-                 | STORE        i a
-                 | FIND_NODE    i
-                 | RETURN_NODES Word8 i [Node i]
-                 | FIND_VALUE   i
-                 | RETURN_VALUE i a
-                   deriving (Eq)
+data Command i a
+  = PING
+  | PONG
+  | STORE        i a
+  | FIND_NODE    i
+  | RETURN_NODES Word8 i [Node i]
+  | FIND_VALUE   i
+  | RETURN_VALUE i a
+  deriving (Eq)
 
 instance Show i => Show (Command i a) where
   show PING                   = "PING"

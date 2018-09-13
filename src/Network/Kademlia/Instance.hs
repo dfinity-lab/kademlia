@@ -119,7 +119,7 @@ lookupNodeByPeer :: (Serialize i, Ord i) => KademliaInstance i a -> Peer -> IO (
 lookupNodeByPeer (KademliaInstance _ _ (KademliaState sTree _ _) _ cfg) peer = do
     tree <- atomically (readTVar sTree)
     pure $
-        case M.lookup peer (T.ntPeers tree) of
+        case M.lookup peer (T.nodeTreePeers tree) of
             Nothing  -> Nothing
             Just nid -> T.lookup tree nid `usingConfig` cfg
 
@@ -205,5 +205,5 @@ viewBuckets (KademliaInstance _ _ (KademliaState sTree _ _) _ _) = do
 
 peersToNodeIds :: KademliaInstance i a -> [Peer] -> IO [Maybe (Node i)]
 peersToNodeIds (KademliaInstance _ _ (KademliaState sTree _ _) _ _) peers = do
-    knownPeers <- T.ntPeers <$> atomically (readTVar sTree)
+    knownPeers <- T.nodeTreePeers <$> atomically (readTVar sTree)
     pure $ zipWith (fmap . Node) peers $ map (`M.lookup` knownPeers) peers
