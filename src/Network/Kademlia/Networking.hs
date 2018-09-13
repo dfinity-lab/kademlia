@@ -9,17 +9,17 @@ Network.Kademlia.Networking implements all the UDP network functionality.
 
 module Network.Kademlia.Networking
        ( KademliaHandle
-       , kSock
-       , replyQueue
+       , handleSocket
+       , handleReplyQueue
        , openOn
        , openOnL
        , startRecvProcess
        , send
        , expect
        , closeK
-       , logInfo
-       , logError
-       , logError'
+       , handleLogInfo
+       , handleLogError
+       , handleLogError'
        ) where
 
 import           Control.Concurrent
@@ -42,31 +42,33 @@ import           Network.Kademlia.Config
                  (KademliaConfig (..), defaultConfig)
 import           Network.Kademlia.Protocol   (parse, serialize)
 import           Network.Kademlia.ReplyQueue
-                 (Reply (..), ReplyQueue (dispatchChan), ReplyRegistration,
-                 flush, register)
+                 (Reply (..), ReplyQueue (replyQueueDispatchChan),
+                 ReplyRegistration, flush, register)
 import           Network.Kademlia.Types
                  (Command, Peer (..), Serialize (..), toPeer)
 
 -- | A handle to a UDP socket running the Kademlia connection
-data KademliaHandle i a = KH {
-      kSock      :: Socket
-    , sendThread :: ThreadId
-    , sendChan   :: Chan (Command i a, Peer)
-    , replyQueue :: ReplyQueue i a
-    , recvThread :: MVar ThreadId
-    , logInfo    :: String -> IO ()
-    , logError   :: String -> IO ()
+data KademliaHandle i a
+  = KademliaHandle
+    { handleSocket     :: Socket
+    , handleSendThread :: ThreadId
+    , handleSendChan   :: Chan (Command i a, Peer)
+    , handleReplyQueue :: ReplyQueue i a
+    , handleRecvThread :: MVar ThreadId
+    , handleLogInfo    :: String -> IO ()
+    , handleLogError   :: String -> IO ()
     }
+  deriving ()
 
-logError' :: KademliaHandle i a -> SomeException -> IO ()
-logError' h = logError h . show
+handleLogError' :: KademliaHandle i a -> SomeException -> IO ()
+handleLogError' h = handleLogError h . show
 
 openOn
     :: (Show i, Serialize i, Serialize a)
     => String -> String -> i -> ReplyQueue i a -> IO (KademliaHandle i a)
 openOn host port id' rq = openOnL host port id' lim rq (const $ pure ()) (const $ pure ())
   where
-    lim = msgSizeLimit defaultConfig
+    lim = configMsgSizeLimit defaultConfig
 
 -- | Open a Kademlia connection on specified port and return a corresponding
 --   KademliaHandle
@@ -93,7 +95,7 @@ openOnL host port id' lim rq logInfo logError = withSocketsDo $ do
     mvar <- newEmptyMVar
 
     -- Return the handle
-    return $ KH sock tId chan rq mvar logInfo logError
+    return $ KademliaHandle sock tId chan rq mvar logInfo logError
 
 sendProcessL
     :: (Show i, Serialize i, Serialize a)
@@ -136,29 +138,29 @@ startRecvProcess
 startRecvProcess kh = do
     tId <- forkIO $ (withSocketsDo . forever $ do
         -- Read from socket
-        (received, addr) <- S.recvFrom (kSock kh) 1500
+        (received, addr) <- S.recvFrom (handleSocket kh) 1500
         -- Try to create peer
         peer <- toPeer addr
         case peer of
-            Nothing -> logError kh ("Unknown peer " ++ show addr)
+            Nothing -> handleLogError kh ("Unknown peer " ++ show addr)
             Just p  ->
                 -- Try parsing the signal
                 case parse p received of
                     Left _    ->
-                      logError kh ("Can't parse " ++ show (BS.length received) ++ " bytes from " ++ show peer)
+                      handleLogError kh ("Can't parse " ++ show (BS.length received) ++ " bytes from " ++ show peer)
                     Right sig -> do
-                        logInfo kh ("Received signal " ++ show sig ++ " from " ++ show p)
+                        handleLogInfo kh ("Received signal " ++ show sig ++ " from " ++ show p)
                         -- Send the signal to the receivng process of instance
-                        writeChan (dispatchChan . replyQueue $ kh) $ Answer sig
-                        logInfo kh (" -- added from signal " ++ show p ++ " to chan")
+                        writeChan (replyQueueDispatchChan . handleReplyQueue $ kh) $ Answer sig
+                        handleLogInfo kh (" -- added from signal " ++ show p ++ " to chan")
         )
             -- Send Closed reply to all handlers
             `finally` do
-                flush . replyQueue $ kh
-                writeChan (dispatchChan . replyQueue $ kh) Closed
+                flush $ handleReplyQueue kh
+                writeChan (replyQueueDispatchChan (handleReplyQueue kh)) Closed
 
-    success <- tryPutMVar (recvThread kh) tId
-    unless success . ioError . userError $ "Receiving process already running"
+    success <- tryPutMVar (handleRecvThread kh) tId
+    unless success $ ioError $ userError "Receiving process already running"
 
 -- | Send a Signal to a Peer over the connection corresponding to the
 --   KademliaHandle
@@ -166,26 +168,26 @@ send :: KademliaHandle i a
      -> Peer
      -> Command i a
      -> IO ()
-send kh peer cmd = writeChan (sendChan kh) (cmd, peer)
+send kh peer cmd = writeChan (handleSendChan kh) (cmd, peer)
 
 -- | Register a handler channel for a Reply
 expect :: KademliaHandle i a
        -> ReplyRegistration i
        -> Chan (Reply i a)
        -> IO ()
-expect kh reg = register reg . replyQueue $ kh
+expect kh reg = register reg . handleReplyQueue $ kh
 
 -- | Close the connection corresponding to a KademliaHandle
 closeK :: KademliaHandle i a -> IO ()
 closeK kh = do
     -- Kill recvThread
-    empty <- isEmptyMVar . recvThread $ kh
+    empty <- isEmptyMVar . handleRecvThread $ kh
     unless empty $ do
-        tId <- takeMVar . recvThread $ kh
+        tId <- takeMVar . handleRecvThread $ kh
         killThread tId
 
     -- Kill sendThread
-    killThread . sendThread $ kh
+    killThread . handleSendThread $ kh
 
-    close $ kSock kh
+    close $ handleSocket kh
     yield

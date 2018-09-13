@@ -113,7 +113,7 @@ anything to handle this.
 
 module Network.Kademlia
        ( KademliaInstance
-       , node
+       , instanceNode
        , KademliaConfig (..)
        , KademliaSnapshot (..)
        , create
@@ -174,7 +174,7 @@ createL
     -> IO (KademliaInstance i a)
 createL (host, port) extAddr id' cfg logInfo logError = do
     rq <- emptyReplyQueueL logInfo logError
-    let lim = msgSizeLimit cfg
+    let lim = configMsgSizeLimit cfg
     h <- openOnL host (show port) id' lim rq logInfo logError
     inst <- newInstance id' extAddr cfg h
     inst <$ start inst
@@ -191,16 +191,16 @@ createLFromSnapshot
     -> IO (KademliaInstance i a)
 createLFromSnapshot (host, port) extAddr cfg snapshot logInfo logError = do
     rq <- emptyReplyQueueL logInfo logError
-    let lim = msgSizeLimit cfg
-    let id' = T.extractId (spTree snapshot) `usingConfig` cfg
+    let lim = configMsgSizeLimit cfg
+    let id' = T.extractId (snapshotTree snapshot) `usingConfig` cfg
     h <- openOnL host (show port) id' lim rq logInfo logError
     inst <- restoreInstance extAddr cfg h snapshot
     inst <$ start inst
 
 -- | Stop a KademliaInstance by closing it
 close :: KademliaInstance i a -> IO ()
-close = closeK . handle
+close = closeK . instanceHandle
 
 -- | Run WithConfig action using given kademlia instance
 usingKademliaInstance :: WithConfig a -> KademliaInstance i v -> a
-usingKademliaInstance f = usingConfig f . config
+usingKademliaInstance f = usingConfig f . instanceConfig

@@ -58,7 +58,7 @@ toRegistration (Answer sig)  = case rType . command $ sig of
     Nothing -> Nothing
     Just rt -> Just (RR [rt] origin)
   where
-    origin = peer $ source sig
+    origin = nodePeer $ source sig
 
     rType :: Command i a -> Maybe (ReplyType i)
     rType  PONG                  = Just  R_PONG
@@ -78,18 +78,20 @@ data Reply i a = Answer (Signal i a)
                  deriving (Eq, Show)
 
 -- | The actual type representing a ReplyQueue
-data ReplyQueue i a = RQ {
-      queue        :: (TVar [(ReplyRegistration i, Chan (Reply i a), ThreadId)])
-    -- ^ Queue of expected responses
-    , dispatchChan :: Chan (Reply i a)
-    -- ^ Channel for initial receiving of messages.
-    -- Messages from this channel will be dispatched (via @dispatch@)
-    , requestChan  :: Chan (Reply i a)
-    -- ^ This channels needed for accepting requests from nodes.
-    -- Only request will be processed, reply will be ignored.
-    , logInfo      :: String -> IO ()
-    , logError     :: String -> IO ()
+data ReplyQueue i a
+  = ReplyQueue
+    { replyQueueQueue        :: (TVar [(ReplyRegistration i, Chan (Reply i a), ThreadId)])
+      -- ^ Queue of expected responses
+    , replyQueueDispatchChan :: Chan (Reply i a)
+      -- ^ Channel for initial receiving of messages.
+      --   Messages from this channel will be dispatched (via @dispatch@)
+    , replyQueueRequestChan  :: Chan (Reply i a)
+      -- ^ This channel is needed for accepting requests from nodes.
+      --   Only request will be processed, reply will be ignored.
+    , replyQueueLogInfo      :: String -> IO ()
+    , replyQueueLogError     :: String -> IO ()
     }
+  deriving ()
 
 
 -- | Create a new ReplyQueue
@@ -98,9 +100,13 @@ emptyReplyQueue = emptyReplyQueueL (const $ pure ()) (const $ pure ())
 
 -- | Create a new ReplyQueue with loggers
 emptyReplyQueueL :: (String -> IO ()) -> (String -> IO ()) -> IO (ReplyQueue i a)
-emptyReplyQueueL logInfo logError =
-    RQ <$> (atomically . newTVar $ []) <*> newChan <*> newChan <*> pure logInfo <*>
-    pure logError
+emptyReplyQueueL logInfo logError = do
+  ReplyQueue
+    <$> atomically (newTVar [])
+    <*> newChan
+    <*> newChan
+    <*> pure logInfo
+    <*> pure logError
 
 -- | Register a channel as handler for a reply
 register
@@ -111,8 +117,8 @@ register
 register reg rq chan = do
     tId <- timeoutThread reg rq
     atomically $ do
-        rQueue <- readTVar $ queue rq
-        writeTVar (queue rq) $ rQueue ++ [(reg, chan, tId)]
+        rQueue <- readTVar $ replyQueueQueue rq
+        writeTVar (replyQueueQueue rq) $ rQueue ++ [(reg, chan, tId)]
 
 timeoutThread :: ReplyRegistration i -> ReplyQueue i a -> IO ThreadId
 timeoutThread reg rq = forkIO $ do
@@ -124,7 +130,7 @@ timeoutThread reg rq = forkIO $ do
     -- myTId <- myThreadId
 
     -- Send Timeout signal
-    writeChan (dispatchChan rq) . Timeout $ reg
+    writeChan (replyQueueDispatchChan rq) . Timeout $ reg
 
 -- | Dispatch a reply over a registered handler. If there is no handler,
 --   dispatch it to the default one.
@@ -132,19 +138,19 @@ dispatch :: (Show i, Eq i) => Reply i a -> ReplyQueue i a -> IO ()
 dispatch reply rq = do
     -- Try to find a registration matching the reply
     result <- atomically $ do
-        rQueue <- readTVar . queue $ rq
+        rQueue <- readTVar (replyQueueQueue rq)
         case toRegistration reply of
             Just repReg -> case find (matches repReg) rQueue of
                 Just registration -> do
                     -- Remove registration from queue
-                    writeTVar (queue rq) $ delete registration rQueue
+                    writeTVar (replyQueueQueue rq) $ delete registration rQueue
                     return . Just $ registration
 
                 Nothing -> return Nothing
             Nothing -> return Nothing
     case result of
         Just (reg, chan, tId) -> do
-            logInfo rq (" -- dispatch reply " ++ show reply ++ ": in queue, " ++ show reg)
+            replyQueueLogInfo rq (" -- dispatch reply " ++ show reply ++ ": in queue, " ++ show reg)
             -- Kill the timeout thread
             killThread tId
 
@@ -153,14 +159,14 @@ dispatch reply rq = do
 
         -- Send the reply over the default channel
         Nothing -> do
-            logInfo rq (" -- dispatch reply " ++ show reply ++ ": not in queue")
-            writeChan (requestChan rq) reply
+            replyQueueLogInfo rq (" -- dispatch reply " ++ show reply ++ ": not in queue")
+            writeChan (replyQueueRequestChan rq) reply
 
     where matches regA (regB, _, _) = matchRegistrations regA regB
 
 expectedReply :: (Show i, Eq i) => Reply i a -> ReplyQueue i a -> IO Bool
 expectedReply (toRegistration -> reply) rq
-    | Just repReg <- reply = isJust . find (matches repReg) <$> (readTVarIO $ queue rq)
+    | Just repReg <- reply = isJust . find (matches repReg) <$> (readTVarIO $ replyQueueQueue rq)
     | otherwise = pure False
   where
     matches regA (regB, _, _) = matchRegistrations regA regB
@@ -169,8 +175,8 @@ expectedReply (toRegistration -> reply) rq
 flush :: ReplyQueue i a -> IO ()
 flush rq = do
     rQueue <- atomically $ do
-        rQueue <- readTVar . queue $ rq
-        writeTVar (queue rq) []
+        rQueue <- readTVar (replyQueueQueue rq)
+        writeTVar (replyQueueQueue rq) []
         return rQueue
 
     forM_ rQueue $ \(_, chan, tId) -> do
