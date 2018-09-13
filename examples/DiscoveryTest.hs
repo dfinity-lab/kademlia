@@ -1,11 +1,11 @@
 import           Control.Arrow             (first)
 import           Control.Monad             (when)
-import           Control.Monad.Random      (Rand, RandomGen, evalRand, evalRandIO,
-                                            getRandom)
+import           Control.Monad.Random
+                 (Rand, RandomGen, evalRand, evalRandIO, getRandom)
 import           Control.Monad.Trans       (lift)
 import qualified Control.Monad.Trans.State as S
-import           Data.Binary               (Binary (..), decodeOrFail, encode, getWord8,
-                                            putWord8)
+import           Data.Binary
+                 (Binary (..), decodeOrFail, encode, getWord8, putWord8)
 import qualified Data.ByteString           as B
 import qualified Data.ByteString.Char8     as C
 import           Data.ByteString.Lazy      (fromStrict, toStrict)

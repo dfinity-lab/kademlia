@@ -14,16 +14,17 @@ module Networking
 import           Control.Concurrent.Chan     (Chan, newChan, readChan)
 import           Data.Maybe                  (isJust)
 import           Test.QuickCheck             (Gen, Property, arbitrary)
-import           Test.QuickCheck.Monadic     (PropertyM, assert, monadicIO, pick, pre,
-                                              run)
+import           Test.QuickCheck.Monadic
+                 (PropertyM, assert, monadicIO, pick, pre, run)
 
-import           Network.Kademlia.Networking (KademliaHandle (..), closeK, expect, openOn,
-                                              send, startRecvProcess)
-import           Network.Kademlia.ReplyQueue (Reply (..), ReplyQueue (..),
-                                              ReplyRegistration (RR), ReplyType (..),
-                                              dispatch, emptyReplyQueue)
-import           Network.Kademlia.Types      (Command (..), Node (..), Peer (..),
-                                              Signal (..))
+import           Network.Kademlia.Networking
+                 (KademliaHandle (..), closeK, expect, openOn, send,
+                 startRecvProcess)
+import           Network.Kademlia.ReplyQueue
+                 (Reply (..), ReplyQueue (..), ReplyRegistration (RR),
+                 ReplyType (..), dispatch, emptyReplyQueue)
+import           Network.Kademlia.Types
+                 (Command (..), Node (..), Peer (..), Signal (..))
 
 import           TestTypes                   (IdType (..))
 

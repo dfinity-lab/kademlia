@@ -14,8 +14,8 @@ import           Data.Bits               (testBit)
 import qualified Data.ByteString         as B
 import           Test.QuickCheck         ()
 
+import           Network.Kademlia.Config (defaultConfig, usingConfig)
 import           Network.Kademlia.Types  (fromByteStruct, toBS, toByteStruct)
-import           Network.Kademlia.Config (usingConfig, defaultConfig)
 
 import           TestTypes               (IdType)
 

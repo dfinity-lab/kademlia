@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 {-|
 Module      : Network.Kademlia.Types
 Description : Definitions of a few types
@@ -33,7 +35,8 @@ import           Data.List                  (sortBy)
 import           Data.Word                  (Word16)
 import           Data.Word                  (Word8)
 import           GHC.Generics               (Generic)
-import           Network.Socket             (PortNumber (..), SockAddr (..), inet_ntoa)
+import           Network.Socket
+                 (PortNumber (..), SockAddr (..), inet_ntoa)
 
 import           Network.Kademlia.Config    (WithConfig, getConfig)
 import qualified Network.Kademlia.Config    as C

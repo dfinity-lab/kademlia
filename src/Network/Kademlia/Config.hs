@@ -1,3 +1,5 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Network.Kademlia.Config
        ( KademliaConfig(..)
        , WithConfigT (..)
@@ -11,8 +13,8 @@ module Network.Kademlia.Config
        ) where
 
 import           Control.Monad.Identity (Identity (runIdentity))
-import           Control.Monad.Reader (ReaderT (..), ask)
-import           Control.Monad.Trans (MonadTrans)
+import           Control.Monad.Reader   (ReaderT (..), ask)
+import           Control.Monad.Trans    (MonadTrans)
 import           Network.Kademlia.Utils (hour, minute)
 
 data KademliaConfig = KademliaConfig {

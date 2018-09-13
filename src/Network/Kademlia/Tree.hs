@@ -8,7 +8,9 @@ and look up the known nodes.
 This module is designed to be used as a qualified import.
 -}
 
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE DeriveGeneric   #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections   #-}
 
 module Network.Kademlia.Tree
        ( NodeTree (..)
@@ -37,11 +39,11 @@ import           GHC.Generics            (Generic)
 import           System.Random           (StdGen)
 import           System.Random.Shuffle   (shuffleM)
 
-import           Network.Kademlia.Config (KademliaConfig (..), WithConfig, cacheSize,
-                                          getConfig, k)
-import           Network.Kademlia.Types  (ByteStruct, Node (..), Peer, Serialize (..),
-                                          Timestamp, fromByteStruct, sortByDistanceTo,
-                                          toByteStruct)
+import           Network.Kademlia.Config
+                 (KademliaConfig (..), WithConfig, cacheSize, getConfig, k)
+import           Network.Kademlia.Types
+                 (ByteStruct, Node (..), Peer, Serialize (..), Timestamp,
+                 fromByteStruct, sortByDistanceTo, toByteStruct)
 
 data NodeTree i
     = NodeTree

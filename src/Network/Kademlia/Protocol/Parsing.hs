@@ -20,14 +20,16 @@ module Network.Kademlia.Protocol.Parsing
 import           Control.Monad              (liftM, liftM2, liftM3)
 import           Control.Monad.State        (State, evalState, get, put)
 import           Control.Monad.Trans        (lift)
-import           Control.Monad.Trans.Except (ExceptT, catchE, runExceptT, throwE)
+import           Control.Monad.Trans.Except
+                 (ExceptT, catchE, runExceptT, throwE)
 import           Data.Bits                  (shiftL)
 import qualified Data.ByteString            as B
 import qualified Data.ByteString.Char8      as C
 import           Data.Word                  (Word16, Word8)
 
-import           Network.Kademlia.Types     (Command (..), Node (..), Peer (..),
-                                             Serialize (..), Signal (..))
+import           Network.Kademlia.Types
+                 (Command (..), Node (..), Peer (..), Serialize (..),
+                 Signal (..))
 
 type Parse = ExceptT String (State B.ByteString)
 

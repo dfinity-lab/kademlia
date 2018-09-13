@@ -5,7 +5,8 @@ Description : Implementation of the KademliaInstance type
 "Network.Kademlia.Instance" implements the KademliaInstance type.
 -}
 
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE DeriveGeneric   #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Network.Kademlia.Instance
     ( KademliaInstance (..)
@@ -32,8 +33,9 @@ module Network.Kademlia.Instance
 
 import           Control.Arrow               (second)
 import           Control.Concurrent          (ThreadId)
-import           Control.Concurrent.STM      (TVar, atomically, modifyTVar, newTVar,
-                                              readTVar, readTVarIO, writeTVar)
+import           Control.Concurrent.STM
+                 (TVar, atomically, modifyTVar, newTVar, readTVar, readTVarIO,
+                 writeTVar)
 import           Control.Monad               (unless)
 import           Control.Monad.Extra         (unlessM)
 import           Control.Monad.Trans         ()
@@ -45,12 +47,12 @@ import           Data.Time.Clock.POSIX       (getPOSIXTime)
 import           Data.Word                   (Word16)
 import           GHC.Generics                (Generic)
 
-import           Network.Kademlia.Config     (KademliaConfig, defaultConfig, storeValues,
-                                              usingConfig)
+import           Network.Kademlia.Config
+                 (KademliaConfig, defaultConfig, storeValues, usingConfig)
 import           Network.Kademlia.Networking (KademliaHandle (..))
 import qualified Network.Kademlia.Tree       as T
-import           Network.Kademlia.Types      (Node (..), Peer (..), Serialize (..),
-                                              Timestamp)
+import           Network.Kademlia.Types
+                 (Node (..), Peer (..), Serialize (..), Timestamp)
 
 -- | The handle of a running Kademlia Node
 data KademliaInstance i a

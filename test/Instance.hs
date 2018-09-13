@@ -25,24 +25,25 @@ import qualified Data.Map                    as M
 import           Data.Maybe                  (fromJust, isJust)
 
 import           Data.List                   (sort)
-import           Test.HUnit                  (Assertion, assertEqual, assertFailure)
-import           Test.QuickCheck             (Property, arbitrary, conjoin,
-                                              counterexample, (===))
-import           Test.QuickCheck.Monadic     (PropertyM, assert, monadicIO, monitor, pick,
-                                              run)
+import           Test.HUnit
+                 (Assertion, assertEqual, assertFailure)
+import           Test.QuickCheck
+                 (Property, arbitrary, conjoin, counterexample, (===))
+import           Test.QuickCheck.Monadic
+                 (PropertyM, assert, monadicIO, monitor, pick, run)
 
 import           Network.Kademlia            (close, create)
-import           Network.Kademlia.Instance   (BanState, BanState (..),
-                                              KademliaInstance (..),
-                                              KademliaSnapshot (..), banNode, dumpPeers,
-                                              isNodeBanned, lookupNode)
-import           Network.Kademlia.Networking (KademliaHandle (..), closeK, openOn, send,
-                                              startRecvProcess)
-import           Network.Kademlia.ReplyQueue (Reply (..), ReplyQueue (..),
-                                              emptyReplyQueue)
+import           Network.Kademlia.Instance
+                 (BanState (..), KademliaInstance (..), KademliaSnapshot (..),
+                 banNode, dumpPeers, isNodeBanned, lookupNode)
+import           Network.Kademlia.Networking
+                 (KademliaHandle (..), closeK, openOn, send, startRecvProcess)
+import           Network.Kademlia.ReplyQueue
+                 (Reply (..), ReplyQueue (..), emptyReplyQueue)
 import qualified Network.Kademlia.Tree       as T
-import           Network.Kademlia.Types      (Command (..), Node (..), Peer (..),
-                                              Serialize (..), Signal (..), command)
+import           Network.Kademlia.Types
+                 (Command (..), Node (..), Peer (..), Serialize (..),
+                 Signal (..), command)
 
 import           TestTypes                   (IdType (..), NodeBunch (..))
 import           Tree                        (withTree)

@@ -22,27 +22,30 @@ module Network.Kademlia.Networking
        , logError'
        ) where
 
-import           Control.Concurrent          (Chan, MVar, ThreadId, forkIO, isEmptyMVar,
-                                              killThread, newChan, newEmptyMVar, readChan,
-                                              takeMVar, tryPutMVar, writeChan, yield)
+import           Control.Concurrent
+                 (Chan, MVar, ThreadId, forkIO, isEmptyMVar, killThread,
+                 newChan, newEmptyMVar, readChan, takeMVar, tryPutMVar,
+                 writeChan, yield)
 import           Control.Exception           (SomeException, catch, finally)
 import           Control.Monad               (forM_, forever, unless, void)
 import qualified Data.ByteString             as BS
-import           Network.Socket              (AddrInfo (..), AddrInfoFlag (AI_PASSIVE),
-                                              Family (..), Socket,
-                                              SocketOption (ReuseAddr),
-                                              SocketType (Datagram), addrAddress,
-                                              addrFlags, bind, close, defaultHints,
-                                              defaultProtocol, getAddrInfo,
-                                              setSocketOption, socket, withSocketsDo)
+import           Network.Socket
+                 (AddrInfo (..), AddrInfoFlag (AI_PASSIVE), Family (..),
+                 Socket, SocketOption (ReuseAddr), SocketType (Datagram),
+                 addrAddress, addrFlags, bind, close, defaultHints,
+                 defaultProtocol, getAddrInfo, setSocketOption, socket,
+                 withSocketsDo)
 import qualified Network.Socket.ByteString   as S
 import           System.IO.Error             (ioError, userError)
 
-import           Network.Kademlia.Config     (KademliaConfig (..), defaultConfig)
+import           Network.Kademlia.Config
+                 (KademliaConfig (..), defaultConfig)
 import           Network.Kademlia.Protocol   (parse, serialize)
-import           Network.Kademlia.ReplyQueue (Reply (..), ReplyQueue (dispatchChan),
-                                              ReplyRegistration, flush, register)
-import           Network.Kademlia.Types      (Command, Peer (..), Serialize (..), toPeer)
+import           Network.Kademlia.ReplyQueue
+                 (Reply (..), ReplyQueue (dispatchChan), ReplyRegistration,
+                 flush, register)
+import           Network.Kademlia.Types
+                 (Command, Peer (..), Serialize (..), toPeer)
 
 -- | A handle to a UDP socket running the Kademlia connection
 data KademliaHandle i a = KH {
