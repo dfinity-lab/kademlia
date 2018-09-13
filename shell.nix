@@ -1,33 +1,48 @@
-{ nixpkgs ? import <nixpkgs> {}, compiler ? "ghc7101" }:
+{ nixpkgs ? import <nixpkgs> { config = {}; overlays = []; }, compiler ? "default", doBenchmark ? false }:
 
 let
 
   inherit (nixpkgs) pkgs;
 
-  f = { mkDerivation, base, bytestring, containers, HUnit, mtl
-      , network, QuickCheck, stdenv, stm, tasty, tasty-hunit
-      , tasty-quickcheck, transformers, transformers-compat
-      , cabal-install
+  f = { mkDerivation, base, binary, bytestring, containers
+      , contravariant, cryptonite, data-default, errors, extra, HUnit
+      , memory, MonadRandom, mtl, network, QuickCheck
+      , quickcheck-instances, random, random-shuffle, stdenv, stm, tasty
+      , tasty-hunit, tasty-quickcheck, time, transformers
+      , transformers-compat
       }:
       mkDerivation {
         pname = "kademlia";
-        version = "1.1.0.0";
+        version = "1.1.0.1";
         src = ./.;
-        buildDepends = [
-          base bytestring containers mtl network stm transformers
-          transformers-compat
-          cabal-install
+        isLibrary = true;
+        isExecutable = true;
+        libraryHaskellDepends = [
+          base bytestring containers contravariant cryptonite extra memory
+          MonadRandom mtl network random random-shuffle stm time transformers
         ];
-        testDepends = [
-          base bytestring containers HUnit mtl network QuickCheck stm tasty
-          tasty-hunit tasty-quickcheck transformers transformers-compat
+        executableHaskellDepends = [
+          base binary bytestring containers data-default extra MonadRandom
+          mtl network random random-shuffle transformers transformers-compat
         ];
-        homepage = "https://github.com/froozen/kademlia";
+        testHaskellDepends = [
+          base binary bytestring containers data-default errors extra HUnit
+          MonadRandom mtl network QuickCheck quickcheck-instances random
+          random-shuffle stm tasty tasty-hunit tasty-quickcheck time
+          transformers transformers-compat
+        ];
+        homepage = "https://github.com/serokell/kademlia";
         description = "An implementation of the Kademlia DHT Protocol";
         license = stdenv.lib.licenses.bsd3;
       };
 
-  drv = pkgs.haskell.packages.${compiler}.callPackage f {};
+  haskellPackages = if compiler == "default"
+                       then pkgs.haskellPackages
+                       else pkgs.haskell.packages.${compiler};
+
+  variant = if doBenchmark then pkgs.haskell.lib.doBenchmark else pkgs.lib.id;
+
+  drv = variant (haskellPackages.callPackage f {});
 
 in
 
