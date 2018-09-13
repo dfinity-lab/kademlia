@@ -25,15 +25,16 @@ import           Data.List                   (nubBy)
 import           Data.Word                   (Word16)
 import           Network.Socket              (PortNumber)
 
-import           Test.QuickCheck             (Arbitrary (..), Gen, oneof, suchThat,
-                                              vector, vectorOf)
+import           Test.QuickCheck
+                 (Arbitrary (..), Gen, oneof, suchThat, vector, vectorOf)
 import           Test.QuickCheck.Instances   ()
 
-import           Network.Kademlia.HashNodeId (HashId (..), Nonce (..), hashAddress,
-                                              hashIdLength, nonceLen)
+import           Network.Kademlia.HashNodeId
+                 (HashId (..), Nonce (..), hashAddress, hashIdLength, nonceLen)
 import           Network.Kademlia.Instance   (BanState (..))
-import           Network.Kademlia.Types      (Command (..), Node (..), Peer (..),
-                                              Serialize (..), Signal (..))
+import           Network.Kademlia.Types
+                 (Command (..), Node (..), Peer (..), Serialize (..),
+                 Signal (..))
 
 -- | The generated 'Nonce' has 'nonceLen' bytes
 instance Arbitrary Nonce where

@@ -1,11 +1,13 @@
 -- | Network.Kademlia.Process implements all the things that need
 -- to happen in the background to get a working Kademlia instance.
 
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ViewPatterns    #-}
 
 module Network.Kademlia.Process where
 
-import           Control.Concurrent          (ThreadId, forkIO, killThread, myThreadId)
+import           Control.Concurrent
+                 (ThreadId, forkIO, killThread, myThreadId)
 import           Control.Concurrent.Chan     (Chan, readChan)
 import           Control.Concurrent.STM      (atomically, readTVar, writeTVar)
 import           Control.Exception           (catch)
@@ -17,19 +19,23 @@ import           Data.Maybe                  (fromJust, isJust)
 import           Data.Time.Clock.POSIX       (getPOSIXTime)
 import           System.Random               (newStdGen)
 
-import           Network.Kademlia.Config     (KademliaConfig (..), k, usingConfig)
-import           Network.Kademlia.Instance   (KademliaInstance (..), KademliaState (..),
-                                              deleteValue, insertNode, insertValue,
-                                              isNodeBanned, lookupNodeByPeer, lookupValue)
-import           Network.Kademlia.Networking (KademliaHandle (..), expect, logError',
-                                              send, startRecvProcess)
-import           Network.Kademlia.ReplyQueue (Reply (..), ReplyQueue (dispatchChan),
-                                              ReplyRegistration (..), ReplyType (..),
-                                              dispatch, expectedReply, requestChan)
+import           Network.Kademlia.Config
+                 (KademliaConfig (..), k, usingConfig)
+import           Network.Kademlia.Instance
+                 (KademliaInstance (..), KademliaState (..), deleteValue,
+                 insertNode, insertValue, isNodeBanned, lookupNodeByPeer,
+                 lookupValue)
+import           Network.Kademlia.Networking
+                 (KademliaHandle (..), expect, logError', send,
+                 startRecvProcess)
+import           Network.Kademlia.ReplyQueue
+                 (Reply (..), ReplyQueue (dispatchChan),
+                 ReplyRegistration (..), ReplyType (..), dispatch,
+                 expectedReply, requestChan)
 import qualified Network.Kademlia.Tree       as T
-import           Network.Kademlia.Types      (Command (..), Node (..), Peer (..),
-                                              Serialize (..), Signal (..),
-                                              sortByDistanceTo)
+import           Network.Kademlia.Types
+                 (Command (..), Node (..), Peer (..), Serialize (..),
+                 Signal (..), sortByDistanceTo)
 import           Network.Kademlia.Utils      (threadDelay)
 
 -- | Start the background process for a KademliaInstance

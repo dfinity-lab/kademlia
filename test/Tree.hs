@@ -19,16 +19,18 @@ module Tree
        ) where
 
 
-import           Control.Monad           (join, filterM)
+import           Control.Monad           (filterM, join)
 import           Data.Foldable           (foldrM)
 import           Data.Function           (on)
 import           Data.List               (sort, sortBy)
 import           Data.Maybe              (isJust)
 import qualified Data.Set                as S
 import           System.Random           (mkStdGen)
-import           Test.QuickCheck         (Property, conjoin, counterexample, property)
+import           Test.QuickCheck
+                 (Property, conjoin, counterexample, property)
 
-import           Network.Kademlia.Config (WithConfig, defaultConfig, usingConfig, k)
+import           Network.Kademlia.Config
+                 (WithConfig, defaultConfig, k, usingConfig)
 import qualified Network.Kademlia.Tree   as T
 import           Network.Kademlia.Types  (Node (..), Serialize (..), distance)
 

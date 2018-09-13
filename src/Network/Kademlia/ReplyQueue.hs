@@ -22,15 +22,16 @@ module Network.Kademlia.ReplyQueue
     , flush
     ) where
 
-import           Control.Concurrent     (Chan, ThreadId, forkIO, killThread, newChan,
-                                         writeChan)
-import           Control.Concurrent.STM (TVar, atomically, newTVar, readTVar, readTVarIO,
-                                         writeTVar)
+import           Control.Concurrent
+                 (Chan, ThreadId, forkIO, killThread, newChan, writeChan)
+import           Control.Concurrent.STM
+                 (TVar, atomically, newTVar, readTVar, readTVarIO, writeTVar)
 import           Control.Monad          (forM_)
 import           Data.List              (delete, find)
 import           Data.Maybe             (isJust)
 
-import           Network.Kademlia.Types (Command (..), Node (..), Peer, Signal (..))
+import           Network.Kademlia.Types
+                 (Command (..), Node (..), Peer, Signal (..))
 import           Network.Kademlia.Utils (threadDelay)
 
 -- | The different types a replied signal could possibly have.

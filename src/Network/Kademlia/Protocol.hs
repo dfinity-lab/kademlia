@@ -23,8 +23,8 @@ import           Data.List                         (scanl')
 import           Data.Word                         (Word8)
 
 import           Network.Kademlia.Protocol.Parsing (parse)
-import           Network.Kademlia.Types            (Command (..), Node (..),
-                                                    Serialize (..), peerHost, peerPort)
+import           Network.Kademlia.Types
+                 (Command (..), Node (..), Serialize (..), peerHost, peerPort)
 
 -- | Retrieve the assigned protocolId
 commandId :: Command i a -> Word8

@@ -11,11 +11,12 @@ module Protocol
        ) where
 
 import qualified Data.ByteString           as B
-import           Test.QuickCheck           (Property, conjoin, counterexample, (===),
-                                            (==>))
+import           Test.QuickCheck
+                 (Property, conjoin, counterexample, (===), (==>))
 
 import           Network.Kademlia.Protocol (parse, serialize)
-import           Network.Kademlia.Types    (Command (..), Node (..), Signal (..))
+import           Network.Kademlia.Types
+                 (Command (..), Node (..), Signal (..))
 
 import           TestTypes                 (IdType (..))
 

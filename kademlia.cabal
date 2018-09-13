@@ -64,13 +64,6 @@ library
   default-language:    Haskell2010
   ghc-options:         -Wall -fno-warn-orphans -O2
 
-  default-extensions:   DeriveDataTypeable
-                        DeriveGeneric
-                        GeneralizedNewtypeDeriving
-                        OverloadedStrings
-                        RecordWildCards
-                        TypeApplications
-
 test-suite library-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
@@ -111,14 +104,6 @@ test-suite library-test
   default-language:    Haskell2010
   ghc-options:         -Wall -fno-warn-orphans -O2
 
-  default-extensions:   DeriveDataTypeable
-                        DeriveGeneric
-                        GeneralizedNewtypeDeriving
-                        OverloadedStrings
-                        RecordWildCards
-                        TypeApplications
-
-
 executable discovery-test
   main-is:             DiscoveryTest.hs
   build-depends:       base                >= 4.7 && < 5
@@ -139,10 +124,3 @@ executable discovery-test
   hs-source-dirs:      examples
   default-language:    Haskell2010
   ghc-options:         -Wall -fno-warn-orphans -O2
-
-  default-extensions:   DeriveDataTypeable
-                        DeriveGeneric
-                        GeneralizedNewtypeDeriving
-                        OverloadedStrings
-                        RecordWildCards
-                        TypeApplications

@@ -30,14 +30,15 @@ import qualified Data.Map                    as M
 import           Data.Word                   (Word8)
 
 import           Network.Kademlia.Config     (KademliaConfig (..), usingConfig)
-import           Network.Kademlia.Instance   (KademliaInstance (..), KademliaState (..),
-                                              insertNode, isNodeBanned)
+import           Network.Kademlia.Instance
+                 (KademliaInstance (..), KademliaState (..), insertNode,
+                 isNodeBanned)
 import           Network.Kademlia.Networking (expect, send)
 import           Network.Kademlia.ReplyQueue hiding (logError, logInfo)
 import qualified Network.Kademlia.Tree       as T
-import           Network.Kademlia.Types      (Command (..), Node (..), Peer,
-                                              Serialize (..), Signal (..),
-                                              sortByDistanceTo)
+import           Network.Kademlia.Types
+                 (Command (..), Node (..), Peer, Serialize (..), Signal (..),
+                 sortByDistanceTo)
 
 ----------------------------------------------------------------------------
 -- Interface

@@ -18,10 +18,11 @@ import           Data.Maybe                  (isJust)
 import           Test.QuickCheck             (Property)
 import           Test.QuickCheck.Monadic     (assert, monadicIO, pre, run)
 
-import           Network.Kademlia.ReplyQueue (Reply (..), ReplyRegistration (..),
-                                              ReplyType (..), dispatch, emptyReplyQueue,
-                                              queue, register)
-import           Network.Kademlia.Types      (Command (..), Node (..), Signal (..))
+import           Network.Kademlia.ReplyQueue
+                 (Reply (..), ReplyRegistration (..), ReplyType (..), dispatch,
+                 emptyReplyQueue, queue, register)
+import           Network.Kademlia.Types
+                 (Command (..), Node (..), Signal (..))
 
 import           TestTypes                   (IdType (..))
 

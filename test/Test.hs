@@ -13,18 +13,20 @@ import           Test.Tasty.HUnit      as HU
 import           Test.Tasty.QuickCheck as QC
 
 import qualified HashNodeId            as Hash
-import           Implementation        (idClashCheck, joinBannedCheck, joinCheck,
-                                        joinFullCheck, lookupNodesCheck, nodeDownCheck,
-                                        storeAndLookupCheck)
-import           Instance              (banNodeCheck, handlesPingCheck, isNodeBannedCheck,
-                                        snapshotCheck, storeAndFindValueCheck,
-                                        trackingKnownPeersCheck)
+import           Implementation
+                 (idClashCheck, joinBannedCheck, joinCheck, joinFullCheck,
+                 lookupNodesCheck, nodeDownCheck, storeAndLookupCheck)
+import           Instance
+                 (banNodeCheck, handlesPingCheck, isNodeBannedCheck,
+                 snapshotCheck, storeAndFindValueCheck,
+                 trackingKnownPeersCheck)
 import           Networking            (expectCheck, sendCheck)
 import           Protocol              (lengthCheck, parseCheck)
 import           ReplyQueue            (removedCheck, repliesCheck)
-import           Tree                  (bucketSizeCheck, deleteCheck, findClosestCheck,
-                                        insertCheck, pickupNotClosestDifferentCheck,
-                                        refreshCheck, splitCheck, viewCheck)
+import           Tree
+                 (bucketSizeCheck, deleteCheck, findClosestCheck, insertCheck,
+                 pickupNotClosestDifferentCheck, refreshCheck, splitCheck,
+                 viewCheck)
 import           Types                 (fromByteStructCheck, toByteStructCheck)
 
 main :: IO ()
