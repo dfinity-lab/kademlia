@@ -77,8 +77,8 @@ serialize size (toBS -> myId) cmd =
 nodeToArg :: (Serialize i) => Node i -> B.ByteString
 nodeToArg node = nid `B.append` C.pack (host ++ " ") `B.append` port
     where nid = toBS . nodeId $ node
-          host = peerHost . peer $ node
-          port = toBinary . fromIntegral . peerPort . peer $ node
+          host = peerHost . nodePeer $ node
+          port = toBinary . fromIntegral . peerPort . nodePeer $ node
           -- Converts a Word16 into a two character ByteString
           toBinary = B.concat . L.toChunks . toLazyByteString . word16BE
 --

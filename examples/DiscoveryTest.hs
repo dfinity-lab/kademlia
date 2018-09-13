@@ -142,9 +142,9 @@ main = do
         peerKey   = keys !! peerIndex
 
     let config = K.defaultConfig
-          { K.k               = k
-          , K.routingSharingN = rSharing
-          , K.pingTime        = pingTime
+          { K.configK               = k
+          , K.configRoutingSharingN = rSharing
+          , K.configPingTime        = pingTime
           }
 
     let logError = putStrLn . ("ERROR: " ++)

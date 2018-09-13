@@ -26,20 +26,18 @@ module Network.Kademlia.Types
        , wrapPort
        ) where
 
-import           Data.Bits                  (setBit, testBit, zeroBits)
-import qualified Data.ByteString            as B (ByteString, foldr, pack)
-import           Data.Function              (on)
-import           Data.Functor.Contravariant (contramap)
-import           Data.Int                   (Int64)
-import           Data.List                  (sortBy)
-import           Data.Word                  (Word16)
-import           Data.Word                  (Word8)
-import           GHC.Generics               (Generic)
+import           Data.Bits               (setBit, testBit, zeroBits)
+import qualified Data.ByteString         as B (ByteString, foldr, pack)
+import           Data.Function           (on)
+import           Data.Int                (Int64)
+import           Data.List               (sortBy)
+import           Data.Word               (Word16, Word8)
+import           GHC.Generics            (Generic)
 import           Network.Socket
                  (PortNumber (..), SockAddr (..), inet_ntoa)
 
-import           Network.Kademlia.Config    (WithConfig, getConfig)
-import qualified Network.Kademlia.Config    as C
+import           Network.Kademlia.Config (WithConfig, getConfig)
+import qualified Network.Kademlia.Config as C
 
 -- | Representation of an UDP peer
 data Peer = Peer {
@@ -58,17 +56,17 @@ instance Show Peer where
 
 -- | Representation of a Kademlia Node, containing a Peer and an Id
 data Node i = Node {
-      peer   :: Peer
-    , nodeId :: i
+      nodePeer :: Peer
+    , nodeId   :: i
     } deriving (Eq, Ord, Generic)
 
 instance Show i => Show (Node i) where
-  show (Node peer nodeId) = show peer ++ " (" ++ show nodeId ++ ")"
+  show (Node peer ident) = show peer ++ " (" ++ show ident ++ ")"
 
 -- | Sort a bucket by the closeness of its nodes to a give Id
 sortByDistanceTo :: (Serialize i) => [Node i] -> i -> WithConfig [Node i]
 sortByDistanceTo bucket nid = do
-    let pack bk = zip bk <$> sequence (map f bk)
+    let pack bk = zip bk <$> mapM f bk
         f = distance nid . nodeId
         sort = sortBy (compare `on` snd)
         unpack = map fst
@@ -85,16 +83,16 @@ type ByteStruct = [Bool]
 -- | Converts a Serialize into a ByteStruct
 toByteStruct :: (Serialize a) => a -> WithConfig ByteStruct
 toByteStruct s = do
-    k <- C.k <$> getConfig
-    let convert w = foldr (\i bits -> testBit w i : bits) [] [0..k]
+    k <- C.configK <$> getConfig
+    let convert w = map (testBit w) [0..k]
     return $ B.foldr (\w bits -> convert w ++ bits) [] $ toBS s
 
 -- | Convert a ByteStruct back to its ByteString form
 fromByteStruct :: (Serialize a) => ByteStruct -> WithConfig a
 fromByteStruct bs = do
-    k <- C.k <$> getConfig
-    let s = B.pack . foldr (\i ws -> createWord i : ws) [] $ indexes
-        indexes = [0..(length bs `div` (k + 1)) - 1]
+    k <- C.configK <$> getConfig
+    let s = B.pack . map createWord $ indexes
+        indexes = [0 .. (length bs `div` (k + 1)) - 1]
         createWord i = let pos = i * (k + 1)
                        in foldr changeBit zeroBits [pos..pos + k]
         changeBit i w = if bs !! i

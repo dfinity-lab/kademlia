@@ -34,7 +34,7 @@ import           Network.Kademlia.Instance
                  (KademliaInstance (..), KademliaState (..), insertNode,
                  isNodeBanned)
 import           Network.Kademlia.Networking (expect, send)
-import           Network.Kademlia.ReplyQueue hiding (logError, logInfo)
+import           Network.Kademlia.ReplyQueue
 import qualified Network.Kademlia.Tree       as T
 import           Network.Kademlia.Types
                  (Command (..), Node (..), Peer, Serialize (..), Signal (..),
@@ -51,7 +51,7 @@ lookup
     => KademliaInstance i a -> i -> IO (Maybe (a, Node i))
 lookup inst nid = runLookup go inst nid
   where
-    go = startLookup (config inst) sendS cancel checkSignal
+    go = startLookup (instanceConfig inst) sendS cancel checkSignal
 
     -- Return Nothing on lookup failure
     cancel = pure Nothing
@@ -62,19 +62,19 @@ lookup inst nid = runLookup go inst nid
     checkSignal (Signal origin (RETURN_VALUE _ value)) = do
         -- Abuse the known list for saving the peers that are *known* to
         -- store the value
-        modify $ \s -> s { known = [origin] }
+        modify $ \s -> s { lookupStateKnown = [origin] }
 
         -- Finish the lookup, recording which nodes returned the value
         finish
 
         -- Store the value in the closest peer that didn't return the
         -- value
-        known <- gets known
-        polled <- gets polled
+        known <- gets lookupStateKnown
+        polled <- gets lookupStatePolled
         let rest = polled \\ known
         unless (null rest) $ do
-            let cachePeer = peer . head $ sortByDistanceTo rest nid `usingConfig` config inst
-            liftIO . send (handle inst) cachePeer . STORE nid $ value
+            let cachePeer = nodePeer $ head $ sortByDistanceTo rest nid `usingConfig` instanceConfig inst
+            liftIO . send (instanceHandle inst) cachePeer . STORE nid $ value
 
         -- Return the value
         pure . Just $ (value, origin)
@@ -93,13 +93,13 @@ lookup inst nid = runLookup go inst nid
 
     -- As long as there still are pending requests, wait for the next one
     finish = do
-        pending <- gets pending
+        pending <- gets lookupStatePending
         unless (null pending) $ waitForReply (return ()) finishCheck
 
     -- Record the nodes which return the value
     finishCheck (Signal origin (RETURN_VALUE _ _)) = do
-        known <- gets known
-        modify $ \s -> s { known = origin:known }
+        known <- gets lookupStateKnown
+        modify $ \s -> s { lookupStateKnown = origin:known }
         finish
     finishCheck _ = finish
 
@@ -109,7 +109,7 @@ store
     => KademliaInstance i a -> i -> a -> IO ()
 store inst key val = runLookup go inst key
   where
-    go = startLookup (config inst) sendS end checkSignal
+    go = startLookup (instanceConfig inst) sendS end checkSignal
 
     -- Always add the nodes into the loop and continue the lookup
     checkSignal (Signal _ (RETURN_NODES _ _ nodes)) =
@@ -126,16 +126,16 @@ store inst key val = runLookup go inst key
     -- Run the lookup as long as possible, to make sure the nodes closest
     -- to the key were polled.
     end = do
-        polled <- gets polled
+        polled <- gets lookupStatePolled
 
         unless (null polled) $ do
-            let h = handle inst
-                k' = k $ config inst
+            let h = instanceHandle inst
+                k' = configK $ instanceConfig inst
                 -- Don't select more than k peers
                 peerNum = if length polled > k' then k' else length polled
                 -- Select the peers closest to the key
                 storePeers =
-                    map peer . take peerNum $ sortByDistanceTo polled key `usingConfig` config inst
+                    map nodePeer . take peerNum $ sortByDistanceTo polled key `usingConfig` instanceConfig inst
 
             -- Send them a STORE command
             forM_ storePeers $
@@ -172,15 +172,15 @@ joinNetwork inst initPeer = ownId >>= runLookup go inst
     nodeDown = return NodeDown
 
     -- Retrieve your own id
-    ownId = (`usingConfig` config inst) . T.extractId <$>
-            (atomically . readTVar .  sTree . state $ inst)
+    ownId = (`usingConfig` instanceConfig inst) . T.extractId <$>
+            (atomically . readTVar .  stateTree . instanceState $ inst)
 
     -- Also insert all returned nodes to our bucket (see [CSL-258])
     checkSignal (Signal _ (RETURN_NODES _ _ nodes)) = do
         -- Check whether the own id was encountered. If so, return a IDClash
         -- error, otherwise, continue the lookup.
         -- Commented out due to possibility of bug (like when node reconnects)
-        -- tId <- gets targetId
+        -- tId <- gets lookupStateTargetId
         -- case find (\retNode -> nodeId retNode == tId) nodes of
         --     Just _ -> return IDClash
         --     _      -> continueLookup nodes sendS continue finish
@@ -205,7 +205,7 @@ lookupNode
 lookupNode inst nid = runLookup go inst nid
   where
     go :: LookupM i a (Maybe (Node i))
-    go = startLookup (config inst) sendS end checkSignal
+    go = startLookup (instanceConfig inst) sendS end checkSignal
 
     -- Return empty list on lookup failure
     end :: LookupM i a (Maybe (Node i))
@@ -236,14 +236,16 @@ lookupNode inst nid = runLookup go inst nid
 ----------------------------------------------------------------------------
 
 -- | The state of a lookup
-data LookupState i a = LookupState
-    { inst      :: !(KademliaInstance i a)
-    , targetId  :: !i
-    , replyChan :: !(Chan (Reply i a))
-    , known     :: ![Node i]
-    , pending   :: !(M.Map (Node i) Word8)
-    , polled    :: ![Node i]
+data LookupState i a
+  = LookupState
+    { lookupStateInstance  :: !(KademliaInstance i a)
+    , lookupStateTargetId  :: !i
+    , lookupStateReplyChan :: !(Chan (Reply i a))
+    , lookupStateKnown     :: ![Node i]
+    , lookupStatePending   :: !(M.Map (Node i) Word8)
+    , lookupStatePolled    :: ![Node i]
     }
+  deriving ()
 
 -- | MonadTransformer context of a lookup
 type LookupM i a = StateT (LookupState i a) IO
@@ -253,7 +255,6 @@ runLookup :: Ord i => LookupM i a b -> KademliaInstance i a -> i -> IO b
 runLookup lookupM inst nid = do
     chan <- newChan
     let state = LookupState inst nid chan mempty mempty mempty
-
     evalStateT lookupM state
 
 -- The initial phase of the normal kademlia lookup operation
@@ -265,17 +266,17 @@ startLookup
     -> (Signal i a -> LookupM i a b)
     -> LookupM i a b
 startLookup cfg signalAction cancel onSignal = do
-    inst  <- gets inst
-    tree  <- liftIO . atomically . readTVar . sTree . state $ inst
-    nid   <- gets targetId
+    inst  <- gets lookupStateInstance
+    tree  <- liftIO . atomically . readTVar . stateTree . instanceState $ inst
+    nid   <- gets lookupStateTargetId
 
     -- Find the three nodes closest to the supplied id
-    case T.findClosest tree nid (nbLookupNodes cfg) `usingConfig` cfg of
+    case T.findClosest tree nid (configNumLookupNodes cfg) `usingConfig` cfg of
             [] -> cancel
             closest -> do
                 -- Add them to the list of known nodes. At this point, it will
                 -- be empty, therefore just overwrite it.
-                modify $ \s -> s { known = closest }
+                modify $ \s -> s { lookupStateKnown = closest }
 
                 -- Send a signal to each of the Nodes
                 forM_ closest signalAction
@@ -299,26 +300,26 @@ waitForReplyDo
     -> (Signal i a -> LookupM i a b)
     -> LookupM i a b
 waitForReplyDo withinJoin cancel onSignal = do
-    chan <- gets replyChan
-    inst <- gets inst
+    chan <- gets lookupStateReplyChan
+    inst <- gets lookupStateInstance
 
     result <- liftIO . readChan $ chan
     case result of
         -- If there was a reply
         Answer sig@(Signal node cmd) -> do
-            banned <- liftIO $ isNodeBanned inst (peer node)
+            banned <- liftIO $ isNodeBanned inst (nodePeer node)
 
             if banned then
                 -- Ignore message from banned node, wait for another message
                 removeFromEverywhere node >> continueIfMorePending
             else do
                 when withinJoin $ do
-                    polled <- gets polled
-                    pending <- gets pending
+                    polled <- gets lookupStatePolled
+                    pending <- gets lookupStatePending
                     -- Mark the node as polled and pending
                     modify $ \s -> s {
-                          polled = node:polled
-                        , pending = M.insert node 0 pending
+                          lookupStatePolled = node:polled
+                        , lookupStatePending = M.insert node 0 pending
                     }
 
                 -- Insert the node into the tree, as it might be a new one or it
@@ -327,12 +328,12 @@ waitForReplyDo withinJoin cancel onSignal = do
 
                 case cmd of
                     RETURN_NODES n nid _ -> do
-                        toRemove <- maybe True ((>= n) . (+1)) <$> gets (M.lookup node . pending)
+                        toRemove <- maybe True ((>= n) . (+1)) <$> gets (M.lookup node . lookupStatePending)
                         if toRemove then removeFromPending node
                         else do
-                            modify $ \s -> s { pending = M.adjust (+1) node $ pending s }
-                            let h = handle inst
-                                reg = RR [R_RETURN_NODES nid] (peer node)
+                            modify $ \s -> s { lookupStatePending = M.adjust (+1) node $ lookupStatePending s }
+                            let h = instanceHandle inst
+                                reg = RR [R_RETURN_NODES nid] (nodePeer node)
                             liftIO $ expect h reg chan
                     _ -> removeFromPending node
                 -- Call the signal handler
@@ -347,21 +348,21 @@ waitForReplyDo withinJoin cancel onSignal = do
         Closed -> cancel
   where
     -- Remove the node from the list of nodes with pending replies
-    removeFromPending peer = modify $ \s -> s { pending = M.delete peer $ pending s }
+    removeFromPending peer = modify $ \s -> s { lookupStatePending = M.delete peer $ lookupStatePending s }
     -- Remove every trace of the node's existance
     removeFromEverywhere node = modify $ \s -> s
-        { pending = M.delete node $ pending s
-        , known = delete node $ known s
-        , polled = delete node $ polled s
+        { lookupStatePending = M.delete node $ lookupStatePending s
+        , lookupStateKnown   = delete node $ lookupStateKnown s
+        , lookupStatePolled  = delete node $ lookupStatePolled s
         }
     removeFromEverywherePeer pr = modify $ \s -> s
-        { pending = M.filterWithKey (\k _ -> peer k /= pr) $ pending s
-        , known = filter ((/= pr) . peer) $ known s
-        , polled = filter ((/= pr) . peer) $ polled s
+        { lookupStatePending = M.filterWithKey (\k _ -> nodePeer k /= pr) $ lookupStatePending s
+        , lookupStateKnown   = filter ((/= pr) . nodePeer) $ lookupStateKnown s
+        , lookupStatePolled  = filter ((/= pr) . nodePeer) $ lookupStatePolled s
         }
     -- Continue, if there still are pending responses
     continueIfMorePending = do
-        updatedPending <- gets pending
+        updatedPending <- gets lookupStatePending
         if not . null $ updatedPending
             then waitForReply cancel onSignal
             else cancel
@@ -377,15 +378,15 @@ continueLookup
     -> LookupM i a b
     -> LookupM i a b
 continueLookup nodes signalAction continue end = do
-    inst    <- gets inst
-    known   <- gets known
-    nid     <- gets targetId
-    pending <- gets pending
-    polled  <- gets polled
+    inst    <- gets lookupStateInstance
+    known   <- gets lookupStateKnown
+    nid     <- gets lookupStateTargetId
+    pending <- gets lookupStatePending
+    polled  <- gets lookupStatePolled
 
     -- Pick the k closest known nodes, that haven't been polled yet
-    let newKnown = take (k $ config inst) .
-                   (`usingConfig` config inst) .
+    let newKnown = take (configK $ instanceConfig inst) .
+                   (`usingConfig` instanceConfig inst) .
                    (`sortByDistanceTo` nid) .
                    filter (`notElem`polled) $
                    nodes ++ known
@@ -395,11 +396,11 @@ continueLookup nodes signalAction continue end = do
     if (not . null $ newKnown) && not polledNeighbours then do
         -- Send signal to the closest node, that hasn't
         -- been polled yet
-        let next = head $ sortByDistanceTo newKnown nid `usingConfig` config inst
+        let next = head $ sortByDistanceTo newKnown nid `usingConfig` instanceConfig inst
         signalAction next
 
         -- Update known
-        modify $ \s -> s { known = newKnown }
+        modify $ \s -> s { lookupStateKnown = newKnown }
 
         -- Continue the lookup
         continue
@@ -413,18 +414,18 @@ continueLookup nodes signalAction continue end = do
   where
     allClosestPolled :: (Eq i, Serialize i) => KademliaInstance i a -> [Node i] -> LookupM i a Bool
     allClosestPolled inst known = do
-        polled       <- gets polled
+        polled       <- gets lookupStatePolled
         closestKnown <- closest inst known
         pure . all (`elem` polled) $ closestKnown
 
     closest :: Serialize i => KademliaInstance i a -> [Node i] -> LookupM i a [Node i]
     closest inst known = do
-        cid    <- gets targetId
-        polled <- gets polled
+        cid    <- gets lookupStateTargetId
+        polled <- gets lookupStatePolled
 
         -- Return the k closest nodes, the lookup had contact with
-        pure . take (k $ config inst) $
-            sortByDistanceTo (known ++ polled) cid `usingConfig` config inst
+        pure . take (configK $ instanceConfig inst) $
+            sortByDistanceTo (known ++ polled) cid `usingConfig` instanceConfig inst
 
 -- Send a signal to a node
 sendSignalWithoutPolled
@@ -433,12 +434,12 @@ sendSignalWithoutPolled
     -> Peer
     -> LookupM i a ()
 sendSignalWithoutPolled cmd peer = do
-    inst <- gets inst
+    inst <- gets lookupStateInstance
 
     -- Not interested in results from banned node
     unlessM (liftIO $ isNodeBanned inst $ peer) $ do
-        let h = handle inst
-        chan <- gets replyChan
+        let h = instanceHandle inst
+        chan <- gets lookupStateReplyChan
 
         -- Send the signal
         liftIO . send h peer $ cmd
@@ -460,14 +461,14 @@ sendSignal
     -> Node i
     -> LookupM i a ()
 sendSignal cmd node = do
-    inst <- gets inst
+    inst <- gets lookupStateInstance
 
-    unlessM (liftIO $ isNodeBanned inst $ peer node) $ do
-        sendSignalWithoutPolled cmd (peer node)
-        polled <- gets polled
-        pending <- gets pending
+    unlessM (liftIO $ isNodeBanned inst $ nodePeer node) $ do
+        sendSignalWithoutPolled cmd (nodePeer node)
+        polled <- gets lookupStatePolled
+        pending <- gets lookupStatePending
         -- Mark the node as polled and pending
         modify $ \s -> s {
-              polled = node:polled
-            , pending = M.insert node 0 pending
+              lookupStatePolled = node:polled
+            , lookupStatePending = M.insert node 0 pending
             }

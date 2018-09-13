@@ -40,7 +40,7 @@ import           System.Random           (StdGen)
 import           System.Random.Shuffle   (shuffleM)
 
 import           Network.Kademlia.Config
-                 (KademliaConfig (..), WithConfig, cacheSize, getConfig, k)
+                 (KademliaConfig (..), WithConfig, getConfig)
 import           Network.Kademlia.Types
                  (ByteStruct, Node (..), Peer, Serialize (..), Timestamp,
                  fromByteStruct, sortByDistanceTo, toByteStruct)
@@ -95,8 +95,8 @@ delete tree peer = flip (maybe $ pure tree) (M.lookup peer (ntPeers tree)) $ \ni
 --  the node again.
 handleTimeout :: (Serialize i, Eq i) => Timestamp -> NodeTree i -> Peer -> WithConfig (NodeTree i, Bool)
 handleTimeout currentTime tree pr = flip (maybe $ pure (tree, False)) (M.lookup pr (ntPeers tree)) $ \nid -> do
-    KademliaConfig{..} <- getConfig
-    let acceptDiff = (fromIntegral pingLimit) * (fromIntegral pingTime)
+    KademliaConfig {..} <- getConfig
+    let acceptDiff = (fromIntegral configPingLimit) * (fromIntegral configPingTime)
     let f _ _ peers (nodes, cache) = return $ case L.find (idMatches nid . fst) nodes of
             -- Delete a node that exceeded the limit. Don't contact it again
             --   as it is now considered dead
@@ -123,8 +123,8 @@ refresh node currentTimestamp (nodes, cache) =
 -- | Insert a node into a NodeTree
 insert :: (Serialize i, Eq i) => NodeTree i -> Node i -> Timestamp -> WithConfig (NodeTree i)
 insert tree node@Node{nodeId=nid,..} currentTime = do
-    k <- k <$> getConfig
-    cacheSize <- cacheSize <$> getConfig
+    k <- configK <$> getConfig
+    cacheSize <- configCacheSize <$> getConfig
     let needsSplit depth valid _ (nodes, _) = do
           maxDepth <- (subtract 1) . length <$> toByteStruct nid
           return $
@@ -142,7 +142,7 @@ insert tree node@Node{nodeId=nid,..} currentTime = do
           -- Refresh an already existing node
           | node `elem` map fst nodes = pure (refresh node currentTime b, peers)
           -- Simply insert the node, if the bucket isn't full
-          | length nodes < k = pure (Bucket ((node, PingInfo currentTime):nodes, cache), M.insert peer nid peers)
+          | length nodes < k = pure (Bucket ((node, PingInfo currentTime):nodes, cache), M.insert nodePeer nid peers)
           -- Move the node to the first spot, if it's already cached
           | node `elem` cache = pure (Bucket (nodes, node : L.delete node cache), peers)
           -- Cache the node and drop older ones, if necessary
