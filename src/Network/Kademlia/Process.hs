@@ -11,7 +11,7 @@ import           Control.Concurrent
 import           Control.Concurrent.Chan     (Chan, readChan)
 import           Control.Concurrent.STM      (atomically, readTVar, writeTVar)
 import           Control.Exception           (catch)
-import           Control.Monad               (forM_, forever, void, when)
+import           Control.Monad               (forM_, forever, when)
 import           Control.Monad.Extra         (unlessM, whenM)
 import           Control.Monad.IO.Class      (liftIO)
 import qualified Data.Map                    as M
@@ -34,7 +34,7 @@ import           Network.Kademlia.ReplyQueue
 import qualified Network.Kademlia.Tree       as T
 import           Network.Kademlia.Types
                  (Command (..), Node (..), Peer (..), Serialize (..),
-                 Signal (..), sortByDistanceTo)
+                 Signal (..))
 import           Network.Kademlia.Utils      (threadDelay)
 
 -- | Start the background process for a KademliaInstance
@@ -78,55 +78,57 @@ receivingProcessDo
     -> ReplyQueue i a
     -> IO ()
 receivingProcessDo inst@(KademliaInstance _ h _ _ cfg) reply rq = do
-    handleLogInfo h $ "Received reply: " ++ show reply
+  handleLogInfo h $ "Received reply: " ++ show reply
 
-    case reply of
-        -- Handle a timed out node
-        Timeout registration -> do
-            let origin = replyOrigin registration
+  case reply of
+    -- Handle a timed out node
+    Timeout registration -> do
+      let origin = replyOrigin registration
+      -- If peer is banned, ignore
+      unlessM (isNodeBanned inst origin) $ do
+        -- Mark the node as timed out
+        pingAgain <- timeoutNode inst origin
+        -- If the node should be repinged
+        when pingAgain $ do
+          result <- lookupNodeByPeer inst origin
+          case result of
+            Nothing   -> return ()
+            Just node -> sendPing h node (replyQueueRequestChan rq)
+      dispatch reply rq -- remove node from ReplyQueue in the last time
 
-            -- If peer is banned, ignore
-            unlessM (isNodeBanned inst origin) $ do
-                -- Mark the node as timed out
-                pingAgain <- timeoutNode inst origin
-                -- If the node should be repinged
-                when pingAgain $ do
-                    result <- lookupNodeByPeer inst origin
-                    case result of
-                        Nothing   -> return ()
-                        Just node -> sendPing h node (replyQueueRequestChan rq)
-            dispatch reply rq -- remove node from ReplyQueue in the last time
+    -- Store values in newly encountered nodes that you are the closest to
+    Answer (Signal node _) -> do
+      let originId = nodeId node
+      let peerId = nodePeer node
 
-        -- Store values in newly encountered nodes that you are the closest to
-        Answer (Signal node _) -> do
-            let originId = nodeId node
-            let peerId = nodePeer node
+      let retrieve      f = atomically (readTVar (f (instanceState inst)))
+      let retrieveMaybe f = maybe (pure mempty) (atomically . readTVar)
+                            (f (instanceState inst))
 
-            -- If peer is banned, ignore
-            unlessM (isNodeBanned inst peerId) $ do
-                tree <- retrieve stateTree
+      -- If peer is banned, ignore
+      unlessM (isNodeBanned inst (nodePeer node)) $ do
+        tree <- retrieve stateTree
 
-                -- This node is not yet known
-                when (isNothing $ T.lookup tree originId `usingConfig` cfg) $ do
-                    let closestKnown = T.findClosest tree originId 1 `usingConfig` cfg
-                    let ownId        = T.extractId tree `usingConfig` cfg
-                    let self         = node { nodeId = ownId }
-                    let bucket       = self:closestKnown
-                    -- Find out closest known node
-                    let closestId    = nodeId . head $ sortByDistanceTo bucket originId `usingConfig` cfg
+        -- This node is not yet known
+        when (isNothing (T.lookup tree originId `usingConfig` cfg)) $ do
+          let closestKnown = T.findClosest tree originId 1 `usingConfig` cfg
+          let ownId        = T.extractId tree `usingConfig` cfg
+          let self         = node { nodeId = ownId }
+          let bucket       = self:closestKnown
+          -- Find out closest known node
+          let closestId    = nodeId (head (sortByDistanceTo bucket originId
+                                           `usingConfig` cfg))
 
-                    -- This node can be assumed to be closest to the new node
-                    when (ownId == closestId) $ do
-                        storedValues <- M.toList <$> retrieveMaybe stateValues
-                        let p = nodePeer node
-                        -- Store all stored values in the new node
-                        forM_ storedValues (send h p . uncurry STORE)
-                dispatch reply rq
-        Closed -> dispatch reply rq -- if Closed message
 
-  where
-    retrieve f = atomically . readTVar . f . instanceState $ inst
-    retrieveMaybe f = maybe (pure mempty) (atomically . readTVar) . f . instanceState $ inst
+          -- This node can be assumed to be closest to the new node
+          when (ownId == closestId) $ do
+            storedValues <- M.toList <$> retrieveMaybe stateValues
+            -- Store all stored values in the new node
+            forM_ storedValues (send h (nodePeer node) . uncurry STORE)
+        dispatch reply rq
+
+    -- If a Closed message is received
+    Closed -> dispatch reply rq
 
 -- | The actual process running in the background
 backgroundProcess :: (Show i, Serialize i, Ord i, Serialize a, Eq a) =>
@@ -219,7 +221,7 @@ spreadValueProcess (KademliaInstance _ h (KademliaState sTree _ sValues) _ cfg) 
 
 -- | Delete a value after a certain amount of time has passed
 expirationProcess :: (Ord i) => KademliaInstance i a -> i -> IO ()
-expirationProcess inst@(KademliaInstance _ _ _ valueTs cfg) key = do
+expirationProcess (KademliaInstance _ _ _ valueTs cfg) key = do
     -- Map own ThreadId to the key
     myTId <- myThreadId
     oldTId <- atomically $ do
