@@ -1,3 +1,6 @@
 .stack-work
 *#
 *~
+.ghcid
+dist
+dist-newstyle
