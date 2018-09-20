@@ -398,9 +398,9 @@ waitForReplyDo withinJoin cancel onSignal = do
 
     -- On timeout
     Timeout registration -> do
-        let pr = replyOrigin registration
-        removeFromEverywherePeer pr
-        continueIfMorePending
+      let peer = replyOrigin registration
+      removeFromEverywherePeer peer
+      continueIfMorePending
 
     Closed -> cancel
 
