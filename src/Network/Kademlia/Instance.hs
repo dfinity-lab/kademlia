@@ -1,211 +1,372 @@
-{-|
-Module      : Network.Kademlia.Instance
-Description : Implementation of the KademliaInstance type
-
-"Network.Kademlia.Instance" implements the KademliaInstance type.
--}
+--------------------------------------------------------------------------------
 
 {-# LANGUAGE DeriveGeneric   #-}
 {-# LANGUAGE RecordWildCards #-}
 
+--------------------------------------------------------------------------------
+
+-- |
+-- Module      : Network.Kademlia.Instance
+-- Description : Implementation of the 'KademliaInstance' type
+--
+-- "Network.Kademlia.Instance" implements the 'KademliaInstance' type.
+
+--------------------------------------------------------------------------------
+
 module Network.Kademlia.Instance
-    ( KademliaInstance (..)
-    , KademliaState    (..)
-    , BanState (..)
-    , KademliaSnapshot (..)
-    , defaultConfig
-    , newInstance
-    , insertNode
-    , lookupNode
-    , lookupNodeByPeer
-    , insertValue
-    , deleteValue
-    , lookupValue
-    , dumpPeers
-    , banNode
-    , isNodeBanned
-    , takeSnapshot
-    , takeSnapshot'
-    , restoreInstance
-    , viewBuckets
-    , peersToNodeIds
-    ) where
+  ( KademliaInstance (..)
+  , KademliaState (..)
+  , BanState (..)
+  , KademliaSnapshot (..)
+  , defaultConfig
+  , newInstance
+  , insertNode
+  , lookupNode
+  , lookupNodeByPeer
+  , insertValue
+  , deleteValue
+  , lookupValue
+  , dumpPeers
+  , banNode
+  , isNodeBanned
+  , takeSnapshot
+  , takeSnapshot'
+  , restoreInstance
+  , viewBuckets
+  , peersToNodeIds
+  ) where
+
+--------------------------------------------------------------------------------
 
 import           Control.Arrow               (second)
 import           Control.Concurrent          (ThreadId)
-import           Control.Concurrent.STM
-                 (TVar, atomically, modifyTVar, newTVar, readTVar, readTVarIO,
-                 writeTVar)
+import qualified Control.Concurrent.STM      as STM
 import           Control.Monad               (unless)
-import           Control.Monad.Extra         (unlessM)
-import           Control.Monad.Trans         ()
-import           Control.Monad.Trans.Reader  ()
-import           Control.Monad.Trans.State   ()
-import           Data.Map                    (Map)
-import qualified Data.Map                    as M hiding (Map)
-import           Data.Time.Clock.POSIX       (getPOSIXTime)
+import           Data.Time.Clock.POSIX       (POSIXTime, getPOSIXTime)
 import           Data.Word                   (Word16)
 import           GHC.Generics                (Generic)
+
+import           Data.Map.Lazy               (Map)
+import qualified Data.Map.Lazy               as Map
 
 import           Data.Text                   (Text)
 
 import           Network.Kademlia.Config
-                 (KademliaConfig (configStoreValues), defaultConfig,
-                 usingConfig)
-import           Network.Kademlia.Networking (KademliaHandle (..))
+                 (KademliaConfig, defaultConfig, usingConfig)
+import           Network.Kademlia.Networking (KademliaHandle)
 import qualified Network.Kademlia.Tree       as T
 import           Network.Kademlia.Types
-                 (Node (..), Peer (..), Serialize (..), Timestamp)
+                 (Node (Node, nodePeer), Peer (Peer), Serialize, Timestamp)
 
--- | The handle of a running Kademlia Node
+--------------------------------------------------------------------------------
+
+-- |
+-- The handle of a running Kademlia node.
 data KademliaInstance i a
   = KademliaInstance
     { instanceNode              :: !(Node i)
+      -- ^ FIXME: doc
     , instanceHandle            :: !(KademliaHandle i a)
+      -- ^ FIXME: doc
     , instanceState             :: !(KademliaState i a)
-    , instanceExpirationThreads :: !(TVar (Map i ThreadId))
+      -- ^ FIXME: doc
+    , instanceExpirationThreads :: !(STM.TVar (Map i ThreadId))
+      -- ^ FIXME: doc
     , instanceConfig            :: !KademliaConfig
+      -- ^ FIXME: doc
     }
   deriving ()
 
--- | Ban condition for some node
+--------------------------------------------------------------------------------
+
+-- |
+-- The ban state for some node.
 data BanState
-  = BanForever
-  | BanTill !Integer  -- time in microseconds
-  | NoBan
+  = -- | The node is permanently banned.
+    BanForever
+  | -- | The node is banned until the specified date/time.
+    BanTill
+    !POSIXTime
+    -- ^ The time at which the ban ends.
+  | -- | The node is not banned.
+    NoBan
   deriving (Eq, Show, Generic)
 
--- | Representation of the data the KademliaProcess carries
+--------------------------------------------------------------------------------
+
+-- |
+-- Representation of the data the 'KademliaProcess' carries.
 data KademliaState i a
   = KademliaState
     { stateTree   :: !(TVar (T.NodeTree i))
+      -- ^ FIXME: doc
     , stateBanned :: !(TVar (Map Peer BanState))
+      -- ^ FIXME: doc
     , stateValues :: !(Maybe (TVar (Map i a)))
+      -- ^ FIXME: doc
     }
   deriving ()
 
+--------------------------------------------------------------------------------
+
+-- |
+-- FIXME: doc
 data KademliaSnapshot i
   = KademliaSnapshot
     { snapshotTree   :: !(T.NodeTree i)
+      -- ^ FIXME: doc
     , snapshotBanned :: !(Map Peer BanState)
+      -- ^ FIXME: doc
     }
   deriving (Generic)
 
--- | Create a new KademliaInstance from an Id and a KademliaHandle
+--------------------------------------------------------------------------------
+
+-- |
+-- Create a new 'KademliaInstance' from an ID and a 'KademliaHandle'.
 newInstance
-    :: Serialize i
-    => i -> (Text, Word16) -> KademliaConfig -> KademliaHandle i a -> IO (KademliaInstance i a)
+  :: (Serialize i)
+  => i
+  -> (Text, Word16)
+  -> KademliaConfig
+  -> KademliaHandle i a
+  -> IO (KademliaInstance i a)
 newInstance nid (extHost, extPort) cfg handle = do
-    tree <- atomically $ newTVar (T.create nid `usingConfig` cfg)
-    banned <- atomically . newTVar $ M.empty
-    values <- if configStoreValues cfg then Just <$> (atomically . newTVar $ M.empty) else pure Nothing
-    threads <- atomically . newTVar $ M.empty
-    let ownNode = Node (Peer extHost $ fromIntegral extPort) nid
-    return $ KademliaInstance ownNode handle (KademliaState tree banned values) threads cfg
+  tree    <- STM.atomically $ STM.newTVar (T.create nid `usingConfig` cfg)
+  banned  <- STM.atomically $ STM.newTVar Map.empty
+  threads <- STM.atomically $ STM.newTVar Map.empty
+  let ownNode = Node (Peer extHost (fromIntegral extPort)) nid
+  pure $ KademliaInstance ownNode handle (KademliaState tree banned) threads cfg
 
--- | Insert a Node into the NodeTree
-insertNode :: (Serialize i, Ord i) => KademliaInstance i a -> Node i -> IO ()
-insertNode inst@(KademliaInstance _ _ (KademliaState sTree _ _) _ cfg) node = do
-    currentTime <- floor <$> getPOSIXTime
-    unlessM (isNodeBanned inst $ nodePeer node) $ atomically $ do
-        tree <- readTVar sTree
-        writeTVar sTree $ T.insert tree node currentTime `usingConfig` cfg
+--------------------------------------------------------------------------------
 
--- | Lookup a Node in the NodeTree
-lookupNode :: (Serialize i, Ord i) => KademliaInstance i a -> i -> IO (Maybe (Node i))
-lookupNode (KademliaInstance _ _ (KademliaState sTree _ _) _ cfg) nid = do
-    tree <- atomically $ readTVar sTree
-    pure $ T.lookup tree nid `usingConfig` cfg
+-- |
+-- Insert a 'Node' into the 'NodeTree'.
+insertNode
+  :: (Serialize i, Ord i)
+  => KademliaInstance i a
+  -> Node i
+  -> IO ()
+insertNode inst node = do
+  let (KademliaInstance _ _ state _ cfg) = inst
+  let (KademliaState sTree _) = state
+  currentTime <- floor <$> getPOSIXTime
+  isBanned <- isNodeBanned inst (nodePeer node)
+  unless isBanned $ do
+    STM.atomically $ do
+      tree <- STM.readTVar sTree
+      STM.writeTVar sTree $ T.insert tree node currentTime `usingConfig` cfg
 
-lookupNodeByPeer :: (Serialize i, Ord i) => KademliaInstance i a -> Peer -> IO (Maybe (Node i))
-lookupNodeByPeer (KademliaInstance _ _ (KademliaState sTree _ _) _ cfg) peer = do
-    tree <- atomically (readTVar sTree)
-    pure $
-        case M.lookup peer (T.nodeTreePeers tree) of
-            Nothing  -> Nothing
-            Just nid -> T.lookup tree nid `usingConfig` cfg
+--------------------------------------------------------------------------------
 
--- | Return all the Nodes an Instance has encountered so far
-dumpPeers :: KademliaInstance i a -> IO [(Node i, Timestamp)]
-dumpPeers (KademliaInstance _ _ (KademliaState sTree _ _) _ _) = do
-    currentTime <- floor <$> getPOSIXTime
-    atomically $ do
-        tree <- readTVar sTree
-        return . map (second (currentTime -)) . T.toList $ tree
+-- |
+-- Lookup a 'Node' in the 'NodeTree'.
+lookupNode
+  :: (Serialize i, Ord i)
+  => KademliaInstance i a
+  -> i
+  -> IO (Maybe (Node i))
+lookupNode inst nid = do
+  let (KademliaInstance _ _ state _ cfg) = inst
+  let (KademliaState sTree _) = state
+  tree <- STM.atomically (STM.readTVar sTree)
+  pure $ T.lookup tree nid `usingConfig` cfg
 
--- | Insert a value into the store
-insertValue :: (Ord i) => i -> a -> KademliaInstance i a -> IO ()
-insertValue _ _ (KademliaInstance _ _ (KademliaState _ _ Nothing) _ _)             = return ()
-insertValue key value (KademliaInstance _ _ (KademliaState _ _ (Just values)) _ _) = atomically $ do
-    vals <- readTVar values
-    writeTVar values $ M.insert key value vals
+--------------------------------------------------------------------------------
 
--- | Delete a value from the store
-deleteValue :: (Ord i) => i -> KademliaInstance i a -> IO ()
-deleteValue _ (KademliaInstance _ _ (KademliaState _ _ Nothing) _ _)         = return ()
-deleteValue key (KademliaInstance _ _ (KademliaState _ _ (Just values)) _ _) = atomically $ do
-    vals <- readTVar values
-    writeTVar values $ M.delete key vals
+-- |
+-- FIXME: doc
+lookupNodeByPeer
+  :: (Serialize i, Ord i)
+  => KademliaInstance i a
+  -> Peer
+  -> IO (Maybe (Node i))
+lookupNodeByPeer inst peer = do
+  let (KademliaInstance _ _ state _ cfg) = inst
+  let (KademliaState sTree _) = state
+  tree <- STM.atomically (STM.readTVar sTree)
+  pure (do nid <- Map.lookup peer (T.nodeTreePeers tree)
+           T.lookup tree nid `usingConfig` cfg)
 
--- | Lookup a value in the store
-lookupValue :: (Ord i) => i -> KademliaInstance i a -> IO (Maybe a)
-lookupValue _   (KademliaInstance _ _ (KademliaState _ _ Nothing) _ _) = pure Nothing
-lookupValue key (KademliaInstance _ _ (KademliaState _ _ (Just values)) _ _) = atomically $ do
-    vals <- readTVar values
-    return . M.lookup key $ vals
+--------------------------------------------------------------------------------
 
--- | Check whether node is banned
-isNodeBanned :: Ord i => KademliaInstance i a -> Peer -> IO Bool
-isNodeBanned (KademliaInstance _ _ (KademliaState _ banned _) _ _) pr = do
-    banSet <- atomically $ readTVar banned
-    case M.lookup pr banSet of
-        Nothing -> pure False
-        Just b  -> do
-            stillBanned <- isBanned b
-            unless stillBanned $ atomically . modifyTVar banned $ M.delete pr
-            pure stillBanned
-  where
-    isBanned NoBan       = pure False
-    isBanned BanForever  = pure True
-    isBanned (BanTill t) = ( < t) . round <$> getPOSIXTime
+-- |
+-- Return all the Nodes an Instance has encountered so far
+dumpPeers
+  :: KademliaInstance i a
+  -> IO [(Node i, Timestamp)]
+dumpPeers inst = do
+  let (KademliaInstance _ _ state _ _) = inst
+  let (KademliaState sTree _) = state
+  currentTime <- floor <$> getPOSIXTime
+  STM.atomically $ do
+    tree <- STM.readTVar sTree
+    pure $ map (second (\t -> currentTime - t)) (T.toList tree)
 
--- | Mark node as banned
-banNode :: (Serialize i, Ord i) => KademliaInstance i a -> Node i -> BanState -> IO ()
-banNode (KademliaInstance _ _ (KademliaState sTree banned _) _ cfg) node ban = atomically $ do
-    modifyTVar banned $ M.insert (nodePeer node) ban
-    modifyTVar sTree $ \t -> T.delete t (nodePeer node) `usingConfig` cfg
+--------------------------------------------------------------------------------
 
--- | Take a current view of `KademliaState`.
-takeSnapshot' :: KademliaState i a -> IO (KademliaSnapshot i)
-takeSnapshot' (KademliaState tree banned _) = atomically $ do
-    snapshotTree   <- readTVar tree
-    snapshotBanned <- readTVar banned
-    return (KademliaSnapshot {..})
+-- |
+-- Insert a value into the store.
+insertValue
+  :: (Ord i)
+  => i
+  -> a
+  -> KademliaInstance i a
+  -> IO ()
+insertValue key value inst = do
+  let (KademliaInstance _ _ state _ _) = inst
+  let (KademliaState _ _ maybeValues) = state
+  case maybeValues of
+    Just values -> do atomically $ do
+                        vals <- readTVar values
+                        writeTVar values (Map.insert key value vals)
+    Nothing     -> pure ()
 
--- | Take a current view of `KademliaState`.
-takeSnapshot :: KademliaInstance i a -> IO (KademliaSnapshot i)
+--------------------------------------------------------------------------------
+
+-- |
+-- Delete a value from the store.
+deleteValue
+  :: (Ord i)
+  => i
+  -> KademliaInstance i a
+  -> IO ()
+deleteValue key inst = do
+  let (KademliaInstance _ _ state _ _) = inst
+  let (KademliaState _ _ maybeValues) = state
+  case maybeValues of
+    Just values -> do atomically $ do
+                        vals <- readTVar values
+                        writeTVar values (Map.delete key vals)
+    Nothing     -> pure ()
+
+--------------------------------------------------------------------------------
+
+-- |
+-- Lookup a value in the store.
+lookupValue
+  :: (Ord i)
+  => i
+  -> KademliaInstance i a
+  -> IO (Maybe a)
+lookupValue key inst = do
+  let (KademliaInstance _ _ state _ _) = inst
+  let (KademliaState _ _ maybeValues) = state
+  case maybeValues of
+    Just values -> do atomically $ do
+                        vals <- readTVar values
+                        pure (Map.lookup key vals)
+    Nothing     -> pure Nothing
+
+--------------------------------------------------------------------------------
+
+-- |
+-- Check whether node is banned
+isNodeBanned
+  :: (Ord i)
+  => KademliaInstance i a
+  -> Peer
+  -> IO Bool
+isNodeBanned inst peer = do
+  let (KademliaInstance _ _ state _ _) = inst
+  let (KademliaState _ banned) = state
+
+  let isBanned NoBan         = pure False
+      isBanned BanForever    = pure True
+      isBanned (BanTill end) = do cur <- getPOSIXTime
+                                  pure (cur < end)
+
+  banSet <- STM.atomically $ STM.readTVar banned
+  case Map.lookup peer banSet of
+    Nothing -> pure False
+    Just b  -> do stillBanned <- isBanned b
+                  unless stillBanned $ STM.atomically $ do
+                    STM.modifyTVar banned $ Map.delete peer
+                  pure stillBanned
+
+--------------------------------------------------------------------------------
+
+-- |
+-- Mark node as banned
+banNode
+  :: (Serialize i, Ord i)
+  => KademliaInstance i a
+  -> Node i
+  -> BanState
+  -> IO ()
+banNode inst node ban = STM.atomically $ do
+  let (KademliaInstance _ _ state _ cfg) = inst
+  let (KademliaState sTree banned) = state
+  STM.modifyTVar banned $ Map.insert (nodePeer node) ban
+  STM.modifyTVar sTree $ \t -> T.delete t (nodePeer node) `usingConfig` cfg
+
+--------------------------------------------------------------------------------
+
+-- |
+-- Take a snapshot of the given 'KademliaState'.
+takeSnapshot'
+  :: KademliaState i a
+  -> IO (KademliaSnapshot i)
+takeSnapshot' (KademliaState tree banned) = do
+  STM.atomically $ do
+    snapshotTree   <- STM.readTVar tree
+    snapshotBanned <- STM.readTVar banned
+    pure (KademliaSnapshot {..})
+
+--------------------------------------------------------------------------------
+
+-- |
+-- Take a snapshot of the 'KademliaState' for the given 'KademliaInstance'.
+takeSnapshot
+  :: KademliaInstance i a
+  -> IO (KademliaSnapshot i)
 takeSnapshot = takeSnapshot' . instanceState
 
--- | Restores instance from snapshot.
-restoreInstance :: Serialize i => (Text, Word16) -> KademliaConfig -> KademliaHandle i a
-                -> KademliaSnapshot i -> IO (KademliaInstance i a)
+--------------------------------------------------------------------------------
+
+-- |
+-- Restores instance from snapshot.
+restoreInstance
+  :: (Serialize i)
+  => (Text, Word16)
+  -> KademliaConfig
+  -> KademliaHandle i a
+  -> KademliaSnapshot i
+  -> IO (KademliaInstance i a)
 restoreInstance extAddr cfg handle snapshot = do
-    inst <- emptyInstance
-    let st = instanceState inst
-    atomically . writeTVar (stateTree   st) $ snapshotTree   snapshot
-    atomically . writeTVar (stateBanned st) $ snapshotBanned snapshot
-    return inst
-  where
-    emptyInstance = newInstance nid extAddr cfg handle
-    nid           = T.extractId (snapshotTree snapshot) `usingConfig` cfg
+  let nid = T.extractId (snapshotTree snapshot) `usingConfig` cfg
+  let emptyInstance = newInstance nid extAddr cfg handle
+  inst <- emptyInstance
+  let st = instanceState inst
+  STM.atomically $ do
+    STM.writeTVar (stateTree st) (snapshotTree snapshot)
+  STM.atomically $ do
+    STM.writeTVar (stateBanned st) (snapshotBanned snapshot)
+  pure inst
 
--- | Shows stored buckets, ordered by distance to this node
-viewBuckets :: KademliaInstance i a -> IO [[(Node i, Timestamp)]]
-viewBuckets (KademliaInstance _ _ (KademliaState sTree _ _) _ _) = do
-    currentTime <- floor <$> getPOSIXTime
-    map (map $ second (currentTime -)) <$> T.toView <$> readTVarIO sTree
+--------------------------------------------------------------------------------
 
-peersToNodeIds :: KademliaInstance i a -> [Peer] -> IO [Maybe (Node i)]
-peersToNodeIds (KademliaInstance _ _ (KademliaState sTree _ _) _ _) peers = do
-    knownPeers <- T.nodeTreePeers <$> atomically (readTVar sTree)
-    pure $ zipWith (fmap . Node) peers $ map (`M.lookup` knownPeers) peers
+-- |
+-- Shows stored buckets, ordered by distance to this node
+viewBuckets
+  :: KademliaInstance i a
+  -> IO [[(Node i, Timestamp)]]
+viewBuckets inst = do
+  let (KademliaInstance _ _ state _ _) = inst
+  let (KademliaState sTree _) = state
+  currentTime <- floor <$> getPOSIXTime
+  map (map (second (currentTime -))) <$> T.toView <$> STM.readTVarIO sTree
+
+--------------------------------------------------------------------------------
+
+peersToNodeIds
+  :: KademliaInstance i a
+  -> [Peer]
+  -> IO [Maybe (Node i)]
+peersToNodeIds inst peers = do
+  let (KademliaInstance _ _ state _ _) = inst
+  let (KademliaState sTree _) = state
+  knownPeers <- T.nodeTreePeers <$> STM.atomically (STM.readTVar sTree)
+  pure $ zipWith (fmap . Node) peers $ map (`Map.lookup` knownPeers) peers
+
+--------------------------------------------------------------------------------
