@@ -57,7 +57,7 @@ import qualified Network.Kademlia.Config as C
 data Peer
   = Peer
     { peerHost :: !Text
-    , peerPort :: PortNumber
+    , peerPort :: !PortNumber
     }
   deriving (Eq, Ord, Generic)
 
