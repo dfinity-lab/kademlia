@@ -1,26 +1,36 @@
-{-|
-Module      : Network.Kademlia.Protocol
-Description : Implementation of the actual protocol
+--------------------------------------------------------------------------------
 
-Network.Kademlia.Protocol implements the parsing and serialisation of
-ByteStrings into 'Protocol'-Values.
--}
 {-# LANGUAGE ConstraintKinds   #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns      #-}
 
+--------------------------------------------------------------------------------
+
+-- |
+-- Module      : Network.Kademlia.Protocol
+-- Description : Implementation of the actual protocol
+--
+-- Network.Kademlia.Protocol implements the parsing and serialisation of
+-- ByteStrings into 'Protocol'-Values.
+
+--------------------------------------------------------------------------------
+
 module Network.Kademlia.Protocol
-    ( serialize
-    , parse
-    ) where
+  ( serialize
+  , parse
+  ) where
+
+--------------------------------------------------------------------------------
 
 import           Control.Monad                     (when)
 import           Control.Monad.Except              (throwError)
-import qualified Data.ByteString                   as B
-import           Data.ByteString.Builder           (toLazyByteString, word16BE)
-import qualified Data.ByteString.Lazy              as L
 import           Data.List                         (scanl')
 import           Data.Word                         (Word8)
+
+import           Data.ByteString                   (ByteString)
+import qualified Data.ByteString                   as BS
+import           Data.ByteString.Builder           (toLazyByteString, word16BE)
+import qualified Data.ByteString.Lazy              as LBS
 
 import qualified Data.Text.Encoding                as Text
 
@@ -28,7 +38,10 @@ import           Network.Kademlia.Protocol.Parsing (parse)
 import           Network.Kademlia.Types
                  (Command (..), Node (..), Serialize (..), peerHost, peerPort)
 
--- | Retrieve the assigned protocolId
+--------------------------------------------------------------------------------
+
+-- |
+-- Retrieve the assigned protocol ID.
 commandId :: Command i a -> Word8
 commandId PING                 = 0
 commandId PONG                 = 1
@@ -38,59 +51,61 @@ commandId (RETURN_NODES _ _ _) = 4
 commandId (FIND_VALUE _)       = 5
 commandId (RETURN_VALUE _ _)   = 6
 
--- | Turn the command arguments into a ByteString, which fits into specified size.
--- Remaining part of command would be also returned, if any.
-serialize :: (Serialize i, Serialize a)
-            => Int -> i -> Command i a -> Either String [B.ByteString]
-serialize size_ (toBS -> myId) cmd@(RETURN_NODES _ (toBS -> nid) allNodes) =
-    addPrefix <$> genPacks allNodes
-  where
-    addPrefix packs = map (prefix n `B.append`) packs
-      where n = fromIntegral $ length packs
-    prefixSize = size_ - 2 - B.length myId - B.length nid
-    prefix :: Word8 -> B.ByteString
-    prefix n = (commandId cmd) `B.cons` myId `B.append` (n `B.cons` nid)
-    genPacks :: Serialize i => [Node i] -> Either String [B.ByteString]
-    genPacks [] = return []
-    genPacks nodes =
-      let fits b     = B.length b < prefixSize
-          incPacks   = takeWhile fits . scanl' B.append B.empty . map nodeToArg $ nodes
-          argsFitNum = length incPacks
-          pack       = last incPacks
-      in do when (argsFitNum == 0) $
-                throwError "No nodes fit on RETURN_NODES serialization"
-            (:) pack <$> genPacks (drop argsFitNum nodes)
+--------------------------------------------------------------------------------
 
-serialize size (toBS -> myId) cmd =
-    if B.length res + 1 + B.length myId > size
+-- FIXME: move this into Network.Kademlia.Protocol.Serialize
+
+-- |
+-- Turn the command arguments into a ByteString, which fits into specified size.
+-- The remaining part of command is also returned, if any.
+serialize
+  :: (Serialize i, Serialize a)
+  => Int
+  -> i
+  -> Command i a
+  -> Either String [ByteString] -- FIXME: replace String with SerializeError
+serialize size (toBS -> myId) cmd = do
+  case cmd of
+    (RETURN_NODES _ (toBS -> nid) allNodes) -> do
+      let prefix :: Word8 -> ByteString
+          prefix n = commandId cmd `BS.cons` myId `BS.append` (n `BS.cons` nid)
+      let addPrefix packs
+            = map (prefix (fromIntegral (length packs)) `BS.append`) packs
+      let prefixSize = size - 2 - BS.length myId - BS.length nid
+      let genPacks :: (Serialize i) => [Node i] -> Either String [ByteString]
+          genPacks [] = pure []
+          genPacks nodes = do
+            let fits b     = BS.length b < prefixSize
+            let incPacks   = takeWhile fits
+                             $ scanl' BS.append BS.empty
+                             $ map nodeToArg nodes
+            let argsFitNum = length incPacks
+            let pack       = last incPacks
+            when (argsFitNum == 0) $ do
+              throwError "No nodes fit on RETURN_NODES serialization"
+            (pack :) <$> genPacks (drop argsFitNum nodes)
+      addPrefix <$> genPacks allNodes
+    _ -> do
+      let res = case cmd of
+                  PING                 -> BS.empty
+                  PONG                 -> BS.empty
+                  (FIND_NODE nid)      -> toBS nid
+                  (RETURN_NODES _ _ _) -> error "Don't know what to do with this case :("
+      if BS.length res + 1 + BS.length myId > size
         then throwError "Size exceeded"
-        else return $ [cId `B.cons` myId `B.append` res]
-  where
-    res = commandArgs' cmd
-    cId = commandId cmd
-    commandArgs' PING                 = B.empty
-    commandArgs' PONG                 = B.empty
-    commandArgs' (STORE k v)          = toBS k `B.append` toBS v
-    commandArgs' (FIND_NODE nid)      = toBS nid
-    commandArgs' (FIND_VALUE k)       = toBS k
-    commandArgs' (RETURN_VALUE nid v) = toBS nid `B.append` toBS v
-    commandArgs' (RETURN_NODES _ _ _) = error "Don't know what to do with this case :("
+        else pure [commandId cmd `BS.cons` myId `BS.append` res]
 
-nodeToArg :: (Serialize i) => Node i -> B.ByteString
-nodeToArg node = nid `B.append` Text.encodeUtf8 (host <> " ") `B.append` port
-    where nid = toBS . nodeId $ node
-          host = peerHost . nodePeer $ node
-          port = toBinary . fromIntegral . peerPort . nodePeer $ node
-          -- Converts a Word16 into a two character ByteString
-          toBinary = B.concat . L.toChunks . toLazyByteString . word16BE
---
----- | Turn a command into a sendable ByteStrings, which fit into specified size.
----- TODO: preserve lazy evaluation of result list.
---serialize :: (Serialize i, Serialize a)
---          => Int -> i -> Command i a -> Either String [B.ByteString]
---serialize size nid command = do
---    let cId  = commandId command
---    let nid' = toBS nid
---    (args, rest) <- commandArgs (size - 1 - B.length nid') command
---    remaining    <- maybe (return []) (serialize size nid) rest
---    return $ (cId `B.cons` nid' `B.append` args) : remaining
+--------------------------------------------------------------------------------
+
+-- |
+-- FIXME: doc
+nodeToArg :: (Serialize i) => Node i -> ByteString
+nodeToArg node
+  = let nid = toBS (nodeId node)
+        host = peerHost (nodePeer node)
+        port = toBinary (fromIntegral (peerPort (nodePeer node)))
+        -- Converts a Word16 into a two character ByteString
+        toBinary = BS.concat . LBS.toChunks . toLazyByteString . word16BE
+    in nid `BS.append` Text.encodeUtf8 (host <> " ") `BS.append` port
+
+--------------------------------------------------------------------------------
