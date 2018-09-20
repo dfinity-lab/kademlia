@@ -38,6 +38,8 @@ import           Network.Socket
 import qualified Network.Socket.ByteString   as S
 import           System.IO.Error             (ioError, userError)
 
+import qualified Data.Text                   as Text
+
 import           Network.Kademlia.Config
                  (KademliaConfig (..), defaultConfig)
 import           Network.Kademlia.Protocol   (parse, serialize)
@@ -112,7 +114,7 @@ sendProcessL sock lim nid chan logInfo logError =
 
         logInfo $ "Send process: sending .. " ++ show pair ++ " (id " ++ show nid ++ ")"
         -- Get Peer's address
-        (peeraddr:_) <- getAddrInfo Nothing (Just host)
+        (peeraddr:_) <- getAddrInfo Nothing (Just (Text.unpack host))
                           (Just . show $ port)
 
         -- Send the signal

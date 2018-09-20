@@ -35,6 +35,7 @@ import qualified Data.ByteString.Char8      as BSC8
 
 import           Data.Text                  (Text)
 import qualified Data.Text                  as Text
+import qualified Data.Text.Encoding         as Text
 
 import           Network.Kademlia.Types
                  (Command (FIND_NODE, PING, PONG, RETURN_NODES), Node (Node),
@@ -160,7 +161,7 @@ parseNode = do
   host <- parseSplit ' '
   skipCharacter
   port <- parseWord16
-  let peer = Peer (BSC8.unpack host) (fromIntegral port)
+  let peer = Peer (Text.decodeUtf8 host) (fromIntegral port)
   pure $ Node peer nid
 
 --------------------------------------------------------------------------------
