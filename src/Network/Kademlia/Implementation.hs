@@ -20,12 +20,11 @@ import           Prelude                     hiding (lookup)
 
 import           Control.Concurrent.Chan     (Chan, newChan, readChan)
 import           Control.Concurrent.STM      (atomically, readTVar)
-import           Control.Monad               (when)
-import           Control.Monad               (forM_, unless)
+import           Control.Monad               (forM_, when)
 import           Control.Monad.Extra         (unlessM)
 import           Control.Monad.IO.Class      (MonadIO (..))
 import           Control.Monad.Trans.State   (StateT, evalStateT, gets, modify)
-import           Data.List                   (delete, find, (\\))
+import           Data.List                   (delete, find)
 import qualified Data.Map                    as M
 import           Data.Word                   (Word8)
 
