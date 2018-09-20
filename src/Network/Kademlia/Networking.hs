@@ -52,13 +52,13 @@ import           Network.Kademlia.Types
 -- | A handle to a UDP socket running the Kademlia connection
 data KademliaHandle i a
   = KademliaHandle
-    { handleSocket     :: Socket
-    , handleSendThread :: ThreadId
-    , handleSendChan   :: Chan (Command i a, Peer)
-    , handleReplyQueue :: ReplyQueue i a
-    , handleRecvThread :: MVar ThreadId
-    , handleLogInfo    :: String -> IO ()
-    , handleLogError   :: String -> IO ()
+    { handleSocket     :: !Socket
+    , handleSendThread :: !ThreadId
+    , handleSendChan   :: !(Chan (Command i a, Peer))
+    , handleReplyQueue :: !(ReplyQueue i a)
+    , handleRecvThread :: !(MVar ThreadId)
+    , handleLogInfo    :: !(String -> IO ())
+    , handleLogError   :: !(String -> IO ())
     }
   deriving ()
 

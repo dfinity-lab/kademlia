@@ -39,16 +39,19 @@ import           Network.Kademlia.Utils (threadDelay)
 --   Note that these are only those Command types, which are replies to some
 --   sort of request. Therefore, most Command types aren't contained in this
 --   type.
-data ReplyType i = R_PONG
-                 | R_RETURN_VALUE i
-                 | R_RETURN_NODES i
-                   deriving (Eq, Show)
+data ReplyType i
+  = R_PONG
+  | R_RETURN_VALUE !i
+  | R_RETURN_NODES !i
+  deriving (Eq, Show)
 
 -- | The representation of registered replies
-data ReplyRegistration i = RR {
-      replyTypes  :: [ReplyType i]
-    , replyOrigin :: Peer
-    } deriving (Eq, Show)
+data ReplyRegistration i
+  = RR -- FIXME
+    { replyTypes  :: ![ReplyType i]
+    , replyOrigin :: !Peer
+    }
+  deriving (Eq, Show)
 
 -- | Convert a Signal into its ReplyRegistration representation
 toRegistration :: Reply i a -> Maybe (ReplyRegistration i)
@@ -72,24 +75,25 @@ matchRegistrations (RR rtsA idA) (RR rtsB idB) =
     idA == idB && (all (`elem` rtsA) rtsB || all (`elem` rtsB) rtsA)
 
 -- | The actual type of a replay
-data Reply i a = Answer (Signal i a)
-               | Timeout (ReplyRegistration i)
-               | Closed
-                 deriving (Eq, Show)
+data Reply i a
+  = Answer !(Signal i a)
+  | Timeout !(ReplyRegistration i)
+  | Closed
+  deriving (Eq, Show)
 
 -- | The actual type representing a ReplyQueue
 data ReplyQueue i a
   = ReplyQueue
-    { replyQueueQueue        :: (TVar [(ReplyRegistration i, Chan (Reply i a), ThreadId)])
+    { replyQueueQueue        :: !(TVar [(ReplyRegistration i, Chan (Reply i a), ThreadId)])
       -- ^ Queue of expected responses
-    , replyQueueDispatchChan :: Chan (Reply i a)
+    , replyQueueDispatchChan :: !(Chan (Reply i a))
       -- ^ Channel for initial receiving of messages.
       --   Messages from this channel will be dispatched (via @dispatch@)
-    , replyQueueRequestChan  :: Chan (Reply i a)
+    , replyQueueRequestChan  :: !(Chan (Reply i a))
       -- ^ This channel is needed for accepting requests from nodes.
       --   Only request will be processed, reply will be ignored.
-    , replyQueueLogInfo      :: String -> IO ()
-    , replyQueueLogError     :: String -> IO ()
+    , replyQueueLogInfo      :: !(String -> IO ())
+    , replyQueueLogError     :: !(String -> IO ())
     }
   deriving ()
 

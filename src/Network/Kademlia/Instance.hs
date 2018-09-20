@@ -60,34 +60,34 @@ import           Network.Kademlia.Types
 -- | The handle of a running Kademlia Node
 data KademliaInstance i a
   = KademliaInstance
-    { instanceNode              :: Node i
-    , instanceHandle            :: KademliaHandle i a
-    , instanceState             :: KademliaState i a
-    , instanceExpirationThreads :: TVar (Map i ThreadId)
-    , instanceConfig            :: KademliaConfig
+    { instanceNode              :: !(Node i)
+    , instanceHandle            :: !(KademliaHandle i a)
+    , instanceState             :: !(KademliaState i a)
+    , instanceExpirationThreads :: !(TVar (Map i ThreadId))
+    , instanceConfig            :: !KademliaConfig
     }
   deriving ()
 
 -- | Ban condition for some node
 data BanState
   = BanForever
-  | BanTill Integer  -- time in microseconds
+  | BanTill !Integer  -- time in microseconds
   | NoBan
   deriving (Eq, Show, Generic)
 
 -- | Representation of the data the KademliaProcess carries
 data KademliaState i a
   = KademliaState
-    { stateTree   :: TVar (T.NodeTree i)
-    , stateBanned :: TVar (Map Peer BanState)
-    , stateValues :: Maybe (TVar (Map i a))
+    { stateTree   :: !(TVar (T.NodeTree i))
+    , stateBanned :: !(TVar (Map Peer BanState))
+    , stateValues :: !(Maybe (TVar (Map i a)))
     }
   deriving ()
 
 data KademliaSnapshot i
   = KademliaSnapshot
-    { snapshotTree   :: T.NodeTree i
-    , snapshotBanned :: Map Peer BanState
+    { snapshotTree   :: !(T.NodeTree i)
+    , snapshotBanned :: !(Map Peer BanState)
     }
   deriving (Generic)
 
