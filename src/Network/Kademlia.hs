@@ -142,6 +142,10 @@ module Network.Kademlia
        ) where
 
 import           Data.Word                       (Word16)
+
+import           Data.Text                       (Text)
+import qualified Data.Text                       as Text
+
 import           Network.Kademlia.Config
 import           Network.Kademlia.Implementation as I
 import           Network.Kademlia.Instance
@@ -155,8 +159,8 @@ import           Prelude                         hiding (lookup)
 -- | Create a new KademliaInstance corresponding to a given Id on a given port
 create
     :: (Show i, Serialize i, Ord i, Serialize a, Eq a)
-    => (String, Word16) -- ^ Bind address
-    -> (String, Word16) -- ^ External address
+    => (Text, Word16) -- ^ Bind address
+    -> (Text, Word16) -- ^ External address
     -> i
     -> IO (KademliaInstance i a)
 create bindAddr extAddr id' =
@@ -165,8 +169,8 @@ create bindAddr extAddr id' =
 -- | Same as create, but with logging
 createL
     :: (Show i, Serialize i, Ord i, Serialize a, Eq a)
-    => (String, Word16) -- ^ Bind address
-    -> (String, Word16) -- ^ External address
+    => (Text, Word16) -- ^ Bind address
+    -> (Text, Word16) -- ^ External address
     -> i
     -> KademliaConfig
     -> (String -> IO ())
@@ -175,15 +179,15 @@ createL
 createL (host, port) extAddr id' cfg logInfo logError = do
     rq <- emptyReplyQueueL logInfo logError
     let lim = configMsgSizeLimit cfg
-    h <- openOnL host (show port) id' lim rq logInfo logError
+    h <- openOnL (Text.unpack host) (show port) id' lim rq logInfo logError
     inst <- newInstance id' extAddr cfg h
     inst <$ start inst
 
 -- | Create instance from snapshot with logging
 createLFromSnapshot
     :: (Show i, Serialize i, Ord i, Serialize a, Eq a)
-    => (String, Word16) -- ^ Bind address
-    -> (String, Word16) -- ^ External address
+    => (Text, Word16) -- ^ Bind address
+    -> (Text, Word16) -- ^ External address
     -> KademliaConfig
     -> KademliaSnapshot i
     -> (String -> IO ())
@@ -193,7 +197,7 @@ createLFromSnapshot (host, port) extAddr cfg snapshot logInfo logError = do
     rq <- emptyReplyQueueL logInfo logError
     let lim = configMsgSizeLimit cfg
     let id' = T.extractId (snapshotTree snapshot) `usingConfig` cfg
-    h <- openOnL host (show port) id' lim rq logInfo logError
+    h <- openOnL (Text.unpack host) (show port) id' lim rq logInfo logError
     inst <- restoreInstance extAddr cfg h snapshot
     inst <$ start inst
 

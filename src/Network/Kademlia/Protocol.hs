@@ -5,8 +5,9 @@ Description : Implementation of the actual protocol
 Network.Kademlia.Protocol implements the parsing and serialisation of
 ByteStrings into 'Protocol'-Values.
 -}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE ViewPatterns    #-}
+{-# LANGUAGE ConstraintKinds   #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns      #-}
 
 module Network.Kademlia.Protocol
     ( serialize
@@ -17,10 +18,11 @@ import           Control.Monad                     (when)
 import           Control.Monad.Except              (throwError)
 import qualified Data.ByteString                   as B
 import           Data.ByteString.Builder           (toLazyByteString, word16BE)
-import qualified Data.ByteString.Char8             as C
 import qualified Data.ByteString.Lazy              as L
 import           Data.List                         (scanl')
 import           Data.Word                         (Word8)
+
+import qualified Data.Text.Encoding                as Text
 
 import           Network.Kademlia.Protocol.Parsing (parse)
 import           Network.Kademlia.Types
@@ -75,7 +77,7 @@ serialize size (toBS -> myId) cmd =
     commandArgs' (RETURN_NODES _ _ _) = error "Don't know what to do with this case :("
 
 nodeToArg :: (Serialize i) => Node i -> B.ByteString
-nodeToArg node = nid `B.append` C.pack (host ++ " ") `B.append` port
+nodeToArg node = nid `B.append` Text.encodeUtf8 (host <> " ") `B.append` port
     where nid = toBS . nodeId $ node
           host = peerHost . nodePeer $ node
           port = toBinary . fromIntegral . peerPort . nodePeer $ node
