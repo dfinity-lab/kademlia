@@ -11,11 +11,10 @@ import           Control.Concurrent
 import           Control.Concurrent.Chan     (Chan, readChan)
 import           Control.Concurrent.STM      (atomically, readTVar, writeTVar)
 import           Control.Exception           (catch)
-import           Control.Monad               (forM_, forever, void, when)
+import           Control.Monad               (forM_, forever, when)
 import           Control.Monad.Extra         (unlessM, whenM)
 import           Control.Monad.IO.Class      (liftIO)
 import qualified Data.Map                    as M
-import           Data.Maybe                  (isNothing)
 import           Data.Time.Clock.POSIX       (getPOSIXTime)
 import           System.Random               (newStdGen)
 
@@ -33,7 +32,7 @@ import           Network.Kademlia.ReplyQueue
 import qualified Network.Kademlia.Tree       as T
 import           Network.Kademlia.Types
                  (Command (..), Node (..), Peer (..), Serialize (..),
-                 Signal (..), sortByDistanceTo)
+                 Signal (..))
 import           Network.Kademlia.Utils      (threadDelay)
 
 -- | Start the background process for a KademliaInstance
@@ -76,7 +75,7 @@ receivingProcessDo
     -> Reply i a
     -> ReplyQueue i a
     -> IO ()
-receivingProcessDo inst@(KademliaInstance _ h _ _ cfg) reply rq = do
+receivingProcessDo inst@(KademliaInstance _ h _ _ _) reply rq = do
   handleLogInfo h $ "Received reply: " ++ show reply
 
   case reply of
@@ -162,7 +161,7 @@ handleCommand _               _    _    = return ()
 
 -- | Delete a value after a certain amount of time has passed
 expirationProcess :: (Ord i) => KademliaInstance i a -> i -> IO ()
-expirationProcess inst@(KademliaInstance _ _ _ valueTs cfg) key = do
+expirationProcess (KademliaInstance _ _ _ valueTs cfg) key = do
     -- Map own ThreadId to the key
     myTId <- myThreadId
     oldTId <- atomically $ do
