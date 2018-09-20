@@ -32,7 +32,6 @@ source-repository head
 library
   exposed-modules:     Network.Kademlia
                        Network.Kademlia.Config
-                       Network.Kademlia.HashNodeId,
                        Network.Kademlia.Implementation
                        Network.Kademlia.Instance
                        Network.Kademlia.Process
