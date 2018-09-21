@@ -12,22 +12,20 @@ import           Test.Tasty            (TestTree, defaultMain, testGroup)
 import           Test.Tasty.HUnit      as HU
 import           Test.Tasty.QuickCheck as QC
 
-import qualified HashNodeId            as Hash
-import           Implementation
+import           Tests.Implementation
                  (idClashCheck, joinBannedCheck, joinCheck, joinFullCheck,
-                 lookupNodesCheck, nodeDownCheck, storeAndLookupCheck)
-import           Instance
+                 lookupNodesCheck, nodeDownCheck)
+import           Tests.Instance
                  (banNodeCheck, handlesPingCheck, isNodeBannedCheck,
-                 snapshotCheck, storeAndFindValueCheck,
-                 trackingKnownPeersCheck)
-import           Networking            (expectCheck, sendCheck)
-import           Protocol              (lengthCheck, parseCheck)
-import           ReplyQueue            (removedCheck, repliesCheck)
-import           Tree
+                 snapshotCheck, trackingKnownPeersCheck)
+import           Tests.Networking      (expectCheck, sendCheck)
+import           Tests.Protocol        (lengthCheck, parseCheck)
+import           Tests.ReplyQueue      (removedCheck, repliesCheck)
+import           Tests.Tree
                  (bucketSizeCheck, deleteCheck, findClosestCheck, insertCheck,
                  pickupNotClosestDifferentCheck, refreshCheck, splitCheck,
                  viewCheck)
-import           Types                 (fromByteStructCheck, toByteStructCheck)
+import           Tests.Types           (fromByteStructCheck, toByteStructCheck)
 
 main :: IO ()
 main = defaultMain tests
@@ -36,31 +34,14 @@ tests :: TestTree
 tests = testGroup "Tests" [quickCheckTests, hUnitTests]
 
 quickCheckTests :: TestTree
-quickCheckTests = testGroup "QuickCheck" [
-      hashNodeChecks
-    , typeChecks
+quickCheckTests = testGroup "QuickCheck"
+    [ typeChecks
     , protocolChecks
     , networkingChecks
     , treeChecks
     , instanceChecks
     , replyQueueChecks
     , implementationChecks
-    ]
-
-hashNodeChecks :: TestTree
-hashNodeChecks = testGroup "Network.Kademlia.HashNodeId" [
-      QC.testProperty "HashId to ByteString conversion works"
-         Hash.toFromHashId
-    , QC.testProperty "ByteString to HashId conversion works"
-         Hash.fromToHashId
-    , QC.testProperty "BadHashId to ByteString conversion does not work"
-         Hash.toFromHashId
-    , QC.testProperty "ByteString to BadHashId conversion does not work"
-         Hash.fromToHashId
-    , QC.testProperty "Successfully verifies a valid 'HashId'"
-         Hash.verifyHashId
-    , QC.testProperty "Unsuccessfully verifies an invalid 'HashId'"
-         Hash.notVerifyBadHashId
     ]
 
 typeChecks :: TestTree
@@ -108,10 +89,8 @@ treeChecks = testGroup "Network.Kademlia.Tree" [
     ]
 
 instanceChecks :: TestTree
-instanceChecks = testGroup "Network.Kademlia.Instance" [
-      QC.testProperty "Storing and Retrieving values works"
-         storeAndFindValueCheck
-    , QC.testProperty "Peers are put into the tree on first encounter"
+instanceChecks = testGroup "Network.Kademlia.Instance"
+    [ QC.testProperty "Peers are put into the tree on first encounter"
          trackingKnownPeersCheck
     , HU.testCase "Setting ban and checking ban status works"
          isNodeBannedCheck
@@ -139,8 +118,6 @@ implementationChecks = testGroup "Network.Kademlia.Implementation" [
          idClashCheck
      , QC.testProperty "Join network to banned node works"
          joinBannedCheck
-     , QC.testProperty "Storing and looking up values works"
-        storeAndLookupCheck
      , QC.testProperty "Looking up Nodes works"
         lookupNodesCheck
     ]

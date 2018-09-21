@@ -1,11 +1,11 @@
 {-|
-Module      : ReplyQueue
+Module      : Tests.ReplyQueue
 Description : Tests for Network.Kademlia.ReplyQueue
 
 Tests specific to Network.Kademlia.ReplyQueue
 -}
 
-module ReplyQueue
+module Tests.ReplyQueue
        ( removedCheck
        , repliesCheck
        ) where
@@ -20,11 +20,11 @@ import           Test.QuickCheck.Monadic     (assert, monadicIO, pre, run)
 
 import           Network.Kademlia.ReplyQueue
                  (Reply (..), ReplyRegistration (..), ReplyType (..), dispatch,
-                 emptyReplyQueue, queue, register)
+                 emptyReplyQueue, register, replyQueueQueue)
 import           Network.Kademlia.Types
                  (Command (..), Node (..), Signal (..))
 
-import           TestTypes                   (IdType (..))
+import           Tests.TestTypes             (IdType (..))
 
 -- | Check wether registered reply handlers a used
 repliesCheck :: Signal IdType String -> Signal IdType String -> Property
@@ -77,18 +77,17 @@ removedCheck sig = monadicIO $ do
                 chan <- newChan :: IO (Chan (Reply IdType String))
                 register reg' rq chan
                 dispatch (Answer sig) rq
-                fmap null (atomically . readTVar . queue $ rq)
+                null <$> atomically (readTVar (replyQueueQueue rq))
             assert removed
 
 -- | Convert a Signal into its ReplyRegistration representation
 toRegistration :: Signal i a -> Maybe (ReplyRegistration i)
-toRegistration sig = case rType . command $ sig of
+toRegistration sig = case rType (signalCommand sig) of
                         Nothing -> Nothing
-                        Just rt -> Just (RR [rt] origin)
-    where origin = nodeId . source $ sig
+                        Just rt -> Just (ReplyRegistration [rt] origin)
+    where origin = nodePeer (signalSource sig)
 
           rType :: Command i a -> Maybe (ReplyType i)
           rType  PONG                  = Just  R_PONG
-          rType (RETURN_VALUE nid _)   = Just (R_RETURN_VALUE nid)
           rType (RETURN_NODES _ nid _) = Just (R_RETURN_NODES nid)
           rType _                      = Nothing

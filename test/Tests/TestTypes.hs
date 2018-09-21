@@ -3,57 +3,36 @@
 {-# LANGUAGE TypeSynonymInstances       #-}
 
 {-|
-Module      : TestTypes
+Module      : Tests.TestTypes
 Description : Types and Generators needed for general testing
 -}
 
-module TestTypes
-       ( BadHashId (..)
-       , IdType    (..)
+module Tests.TestTypes
+       ( IdType    (..)
        , NodeBunch (..)
        , IdBunch   (..)
        ) where
 
 
-import           Control.Arrow               (first)
-import           Control.Monad               (liftM, liftM2)
-import           Data.Binary                 (Binary)
-import qualified Data.ByteString             as B
-import qualified Data.ByteString.Char8       as C
-import           Data.Function               (on)
-import           Data.List                   (nubBy)
-import           Data.Word                   (Word16)
-import           Network.Socket              (PortNumber)
+import           Control.Arrow             (first)
+import           Control.Monad             (liftM, liftM2)
+import           Data.Binary               (Binary)
+import qualified Data.ByteString           as B
+import qualified Data.ByteString.Char8     as C
+import           Data.Function             (on)
+import           Data.List                 (nubBy)
+import qualified Data.Text                 as Text
+import           Data.Word                 (Word16)
+import           Network.Socket            (PortNumber)
 
 import           Test.QuickCheck
                  (Arbitrary (..), Gen, oneof, suchThat, vector, vectorOf)
-import           Test.QuickCheck.Instances   ()
+import           Test.QuickCheck.Instances ()
 
-import           Network.Kademlia.HashNodeId
-                 (HashId (..), Nonce (..), hashAddress, hashIdLength, nonceLen)
-import           Network.Kademlia.Instance   (BanState (..))
+import           Network.Kademlia.Instance (BanState (..))
 import           Network.Kademlia.Types
                  (Command (..), Node (..), Peer (..), Serialize (..),
                  Signal (..))
-
--- | The generated 'Nonce' has 'nonceLen' bytes
-instance Arbitrary Nonce where
-    arbitrary = Nonce . B.pack <$> vector nonceLen
-
--- | Generates a valid 'HashId' w.r.t. 'verifyAddress', meaning it is successfully
--- serialized/deserialized
-instance Arbitrary HashId where
-    arbitrary = hashAddress <$> arbitrary
-
-newtype BadHashId = BadHashId
-    { getBadId :: HashId
-    } deriving (Show, Eq)
-
--- | Generates an ivalid 'HashId' w.r.t. 'verifyAddress', meaning it is unsuccessfully
--- serialized/deserialized
-instance Arbitrary BadHashId where
-    arbitrary =
-      BadHashId . HashId . B.pack <$> vector hashIdLength
 
 newtype IdType = IT
     { getBS :: B.ByteString
@@ -90,17 +69,14 @@ instance Arbitrary Peer where
         host <- arbitrary `suchThat` \s -> ' ' `notElem` s && not (null s)
                                            && length s < 20
         port <- arbitrary
-        return $ Peer host port
+        return $ Peer (Text.pack host) port
 
 instance (Arbitrary i, Arbitrary v) => Arbitrary (Command i v) where
     arbitrary = oneof [
           return PING
         , return PONG
-        , liftM2 STORE arbitrary arbitrary
         , liftM FIND_NODE arbitrary
         , liftM2 (RETURN_NODES 1) arbitrary $ vectorOf 30 arbitrary
-        , liftM FIND_VALUE arbitrary
-        , liftM2 RETURN_VALUE arbitrary arbitrary
         ]
 
 instance (Arbitrary i, Arbitrary v) => Arbitrary (Signal i v) where

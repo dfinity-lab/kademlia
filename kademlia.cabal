@@ -1,11 +1,11 @@
 name:                kademlia
-version:             1.1.0.1
-homepage:            https://github.com/serokell/kademlia
-bug-reports:         https://github.com/serokell/kademlia/issues
+version:             1.0.0
+homepage:            https://github.com/dfinity-lab/kademlia
+bug-reports:         https://github.com/dfinity-lab/kademlia/issues
 synopsis:            An implementation of the Kademlia DHT Protocol
 description:
     .
-    A haskell implementation of the Kademlia distributed hashtable, an efficient
+    A Haskell implementation of the Kademlia distributed hashtable, an efficient
     way to store and lookup values distributed over a P2P network.
     .
     The implementation is based on the paper
@@ -20,14 +20,17 @@ description:
 license:             BSD3
 license-file:        LICENSE
 author:              fro_ozen <fro_ozen@gmx.de>
-maintainer:          fro_ozen <fro_ozen@gmx.de>, 2016 Serokell <hi@serokell.io>
+maintainer:          DFINITY USA Research <team@dfinity.org>
+copyright:           2015 fro_ozen <fro_ozen@gmz.de>,
+                     2016 Serokell <hi@serokell.io>,
+                     2018 DFINITY Stiftung
 category:            Network
 build-type:          Simple
 cabal-version:       >=1.10
 
 source-repository head
     type:       git
-    location:   https://github.com/serokell/kademlia.git
+    location:   https://github.com/dfinity-lab/kademlia.git
 
 library
   exposed-modules:     Network.Kademlia
@@ -43,20 +46,20 @@ library
                        Network.Kademlia.Types
                        Network.Kademlia.Utils
 
-  build-depends:       base                >= 4.7 && < 5
-                     , bytestring          >= 0.10.2 && < 0.11
-                     , containers          >= 0.5.5.1
-                     , extra               >= 1.4
+  build-depends:       base                 >= 4.7 && < 5
+                     , bytestring           >= 0.10.2 && < 0.11
+                     , containers           >= 0.5.5.1
+                     , extra                >= 1.4
                      , memory
                      , MonadRandom
-                     , mtl                 >= 2.1.3.1
-                     , network             >= 2.6 && < 2.7
+                     , mtl                  >= 2.1.3.1
+                     , network              >= 2.6 && < 2.7
                      , random
                      , random-shuffle
-                     , stm                 >= 2.4.3
-                     , text                >= 1.2
-                     , time                >= 1.6
-                     , transformers        >= 0.3
+                     , stm                  >= 2.4.3
+                     , text                 >= 1.2
+                     , time                 >= 1.6
+                     , transformers         >= 0.3
                      , cryptonite
                      , contravariant
 
@@ -68,59 +71,58 @@ test-suite library-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Test.hs
-  other-modules:       Protocol
-                       Networking
-                       TestTypes
-                       Types
-                       Tree
-                       Instance
-                       ReplyQueue
-                       Implementation
-
-  build-depends:       base                >= 4.7 && < 5
-                     , binary              >= 0.8.3
-                     , bytestring          >= 0.10.2 && < 0.11
-                     , containers          >= 0.5.5.1
-                     , data-default        >= 0.7
+  other-modules:       Tests.Protocol
+                     , Tests.Networking
+                     , Tests.TestTypes
+                     , Tests.Types
+                     , Tests.Tree
+                     , Tests.Instance
+                     , Tests.ReplyQueue
+                     , Tests.Implementation
+  build-depends:       kademlia
+                     , base                 >= 4.7 && < 5
+                     , binary               >= 0.8.3
+                     , bytestring           >= 0.10.2 && < 0.11
+                     , containers           >= 0.5.5.1
+                     , data-default         >= 0.7
                      , errors
-                     , extra               >= 1.4
-                     , HUnit               >= 1.2.5.2
-                     , kademlia
+                     , extra                >= 1.4
+                     , HUnit                >= 1.2.5.2
                      , MonadRandom
-                     , mtl                 >= 2.1.3.1
-                     , network             >= 2.6 && < 2.7
-                     , QuickCheck          >= 2.4
+                     , mtl                  >= 2.1.3.1
+                     , network              >= 2.6 && < 2.7
+                     , QuickCheck           >= 2.4
                      , quickcheck-instances
                      , random
                      , random-shuffle
-                     , stm                 >= 2.4.3
-                     , tasty               >= 0.10.1
-                     , tasty-hunit         >= 0.9.0.1
-                     , tasty-quickcheck    >= 0.8.3.1
-                     , time                >= 1.6
-                     , transformers        >= 0.3
-                     , transformers-compat >= 0.3.3
-
+                     , stm                  >= 2.4.3
+                     , tasty                >= 0.10.1
+                     , tasty-hunit          >= 0.9.0.1
+                     , tasty-quickcheck     >= 0.8.3.1
+                     , text                 >= 1.2
+                     , time                 >= 1.6
+                     , transformers         >= 0.3
+                     , transformers-compat  >= 0.3.3
   default-language:    Haskell2010
   ghc-options:         -Wall -fno-warn-orphans -O2
 
-executable discovery-test
-  main-is:             DiscoveryTest.hs
-  build-depends:       base                >= 4.7 && < 5
-                     , binary              >= 0.8.3
-                     , bytestring          >= 0.10.2 && < 0.11
-                     , containers          >= 0.5.5.1
-                     , data-default        >= 0.7
-                     , extra               >= 1.4
-                     , kademlia
+executable discovery
+  hs-source-dirs:      examples
+  main-is:             Discovery.hs
+  build-depends:       kademlia
+                     , base                 >= 4.7 && < 5
+                     , binary               >= 0.8.3
+                     , bytestring           >= 0.10.2 && < 0.11
+                     , containers           >= 0.5.5.1
+                     , data-default         >= 0.7
+                     , extra                >= 1.4
                      , MonadRandom
-                     , mtl                 >= 2.1.3.1
-                     , network             >= 2.6 && < 2.7
+                     , mtl                  >= 2.1.3.1
+                     , network              >= 2.6 && < 2.7
                      , random
                      , random-shuffle
-                     , transformers        >= 0.3
-                     , transformers-compat >= 0.3.3
-
-  hs-source-dirs:      examples
+                     , text                 >= 1.2
+                     , transformers         >= 0.3
+                     , transformers-compat  >= 0.3.3
   default-language:    Haskell2010
   ghc-options:         -Wall -fno-warn-orphans -O2

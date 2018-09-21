@@ -1,11 +1,13 @@
 {-|
-Module      : Networking
+Module      : Tests.Networking
 Description : Tests for Network.Kademlia.Networking
 
 Tests specific to Network.Kademlia.Networking.
 -}
 
-module Networking
+{-# LANGUAGE OverloadedStrings #-}
+
+module Tests.Networking
        ( expectCheck
        , sendCheck
        ) where
@@ -21,12 +23,13 @@ import           Network.Kademlia.Networking
                  (KademliaHandle (..), closeK, expect, openOn, send,
                  startRecvProcess)
 import           Network.Kademlia.ReplyQueue
-                 (Reply (..), ReplyQueue (..), ReplyRegistration (RR),
-                 ReplyType (..), dispatch, emptyReplyQueue)
+                 (Reply (..), ReplyQueue (..),
+                 ReplyRegistration (ReplyRegistration), ReplyType (..),
+                 dispatch, emptyReplyQueue)
 import           Network.Kademlia.Types
                  (Command (..), Node (..), Peer (..), Signal (..))
 
-import           TestTypes                   (IdType (..))
+import           Tests.TestTypes             (IdType (..))
 
 valueSet :: (Monad m) => PropertyM m (Peer, Peer, IdType, IdType)
 valueSet = do
@@ -54,26 +57,27 @@ sendCheck cmd = monadicIO $ do
         startRecvProcess khB
 
         send khA pB cmd
-        (Answer sig) <- readChan . dispatchChan $ rqB :: IO (Reply IdType String)
+        (Answer sig) <- readChan (replyQueueDispatchChan rqB)
+                        :: IO (Reply IdType String)
 
         closeK khA
         closeK khB
 
         return sig
 
-    assert $ command sig == cmd
-    assert $ (peer . source $ sig) == pA
-    assert $ (nodeId . source $ sig) == idA
+    assert $ signalCommand sig == cmd
+    assert $ nodePeer (signalSource sig) == pA
+    assert $ nodeId   (signalSource sig) == idA
 
     return ()
 
 -- | Make sure expect works the way it's supposed to
 expectCheck :: Signal IdType String -> IdType -> Property
 expectCheck sig idA = monadicIO $ do
-    let rtM = rType . command $ sig
-    pre . isJust $ rtM
+    let rtM = rType (signalCommand sig)
+    pre (isJust rtM)
     let (Just rt) = rtM
-        rr = RR [rt] . nodeId . source $ sig
+    let rr = ReplyRegistration [rt] (nodePeer (signalSource sig))
 
     replySig <- run $ do
         rqA <- emptyReplyQueue
@@ -97,6 +101,5 @@ expectCheck sig idA = monadicIO $ do
 -- | Convert a command into a ReplyType
 rType :: Command i a -> Maybe (ReplyType i)
 rType  PONG                  = Just  R_PONG
-rType (RETURN_VALUE nid _)   = Just (R_RETURN_VALUE nid)
 rType (RETURN_NODES _ nid _) = Just (R_RETURN_NODES nid)
 rType _                      = Nothing
