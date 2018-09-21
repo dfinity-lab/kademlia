@@ -389,7 +389,9 @@ waitForReplyDo withinJoin cancel onSignal = do
                      if toRemove
                        then removeFromPending node
                        else do modify (modifyPending (M.adjust (+1) node))
-                               let reg = RR [R_RETURN_NODES nid] (nodePeer node)
+                               let reg = ReplyRegistration
+                                         [R_RETURN_NODES nid]
+                                         (nodePeer node)
                                liftIO $ expect (instanceHandle inst) reg chan
                    _ -> removeFromPending node
 
@@ -499,8 +501,9 @@ sendSignalWithoutPolled cmd peer = do
 
     -- Determine the appropriate ReplyRegistrations to the command
     let regs = case cmd of
-          FIND_NODE nid  -> RR [R_RETURN_NODES nid] peer
-          FIND_VALUE nid -> RR [R_RETURN_NODES nid, R_RETURN_VALUE nid] peer
+          FIND_NODE nid  -> ReplyRegistration [R_RETURN_NODES nid] peer
+          FIND_VALUE nid -> ReplyRegistration
+                            [R_RETURN_NODES nid, R_RETURN_VALUE nid] peer
           _              -> error "Unknown command at @sendSignal@"
 
     -- Expect an appropriate reply to the command

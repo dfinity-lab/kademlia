@@ -1,90 +1,111 @@
-{-# LANGUAGE ViewPatterns #-}
-{-|
-Module      : Network.Kademlia.ReplyQueue
-Description : A queue allowing to register handlers for expected replies
+--------------------------------------------------------------------------------
 
-Network.Kademlia.ReplyQueue implements a Queue designed for registering
-handlers for expected replies.
+-- |
+-- Module      : Network.Kademlia.ReplyQueue
+-- Description : A queue allowing to register handlers for expected replies
+--
+-- "Network.Kademlia.ReplyQueue" implements a queue designed for registering
+-- handlers for expected replies.
+--
+-- The handlers are represented by unbound channels from the
+-- "Control.Concurrent.Chan" module.
 
-The handlers are represented by unbound channels from Control.Concurrency.Chan.
--}
+--------------------------------------------------------------------------------
 
 module Network.Kademlia.ReplyQueue
-    ( ReplyType(..)
-    , ReplyRegistration(..)
-    , Reply(..)
-    , ReplyQueue(..)
-    , emptyReplyQueue
-    , emptyReplyQueueL
-    , register
-    , dispatch
-    , expectedReply
-    , flush
-    ) where
+  ( ReplyType (..)
+  , ReplyRegistration (..)
+  , Reply (..)
+  , ReplyQueue (..)
+  , emptyReplyQueue
+  , emptyReplyQueueL
+  , register
+  , dispatch
+  , expectedReply
+  , flush
+  ) where
 
-import           Control.Concurrent
-                 (Chan, ThreadId, forkIO, killThread, newChan, writeChan)
-import           Control.Concurrent.STM
-                 (TVar, atomically, newTVar, readTVar, readTVarIO, writeTVar)
-import           Control.Monad          (forM_)
-import           Data.List              (delete, find)
-import           Data.Maybe             (isJust)
+--------------------------------------------------------------------------------
+
+import           Control.Concurrent      (ThreadId, forkIO, killThread)
+import           Control.Concurrent.Chan (Chan, newChan, writeChan)
+import qualified Control.Concurrent.STM  as STM
+import           Control.Monad           (forM_)
+import           Data.List               (delete, find)
+import           Data.Maybe              (isJust)
 
 import           Network.Kademlia.Types
-                 (Command (..), Node (..), Peer, Signal (..))
-import           Network.Kademlia.Utils (threadDelay)
+                 (Command (PONG, RETURN_NODES), Node (nodePeer), Peer,
+                 Signal (signalCommand, signalSource))
+import           Network.Kademlia.Utils  (threadDelay)
 
--- | The different types a replied signal could possibly have.
+--------------------------------------------------------------------------------
+
+-- |
+-- The different types a replied signal could possibly have.
 --
---   Note that these are only those Command types, which are replies to some
---   sort of request. Therefore, most Command types aren't contained in this
---   type.
+-- Note that these are only those 'Command' types which are replies to some
+-- sort of request.
 data ReplyType i
   = R_PONG
   | R_RETURN_VALUE !i
   | R_RETURN_NODES !i
   deriving (Eq, Show)
 
--- | The representation of registered replies
+--------------------------------------------------------------------------------
+
+-- |
+-- The representation of registered replies.
 data ReplyRegistration i
-  = RR -- FIXME
+  = ReplyRegistration
     { replyTypes  :: ![ReplyType i]
+      -- ^ FIXME: doc
     , replyOrigin :: !Peer
+      -- ^ FIXME: doc
     }
   deriving (Eq, Show)
 
--- | Convert a Signal into its ReplyRegistration representation
+--------------------------------------------------------------------------------
+
+-- |
+-- Convert a 'Signal' into its 'ReplyRegistration' representation.
 toRegistration :: Reply i a -> Maybe (ReplyRegistration i)
 toRegistration Closed        = Nothing
 toRegistration (Timeout reg) = Just reg
-toRegistration (Answer sig)  = case rType (signalCommand sig) of
-    Nothing -> Nothing
-    Just rt -> Just (RR [rt] origin)
-  where
-    origin = nodePeer (signalSource sig)
+toRegistration (Answer sig)  = do
+  rt <- case signalCommand sig of
+          PONG                   -> Just R_PONG
+          (RETURN_VALUE nid _)   -> Just (R_RETURN_VALUE nid)
+          (RETURN_NODES _ nid _) -> Just (R_RETURN_NODES nid)
+          _                      -> Nothing
+  let origin = nodePeer (signalSource sig)
+  pure (ReplyRegistration [rt] origin)
 
-    rType :: Command i a -> Maybe (ReplyType i)
-    rType PONG                   = Just  R_PONG
-    rType (RETURN_VALUE nid _)   = Just (R_RETURN_VALUE nid)
-    rType (RETURN_NODES _ nid _) = Just (R_RETURN_NODES nid)
-    rType _                      = Nothing
+--------------------------------------------------------------------------------
 
--- | Compare wether two ReplyRegistrations match
+-- |
+-- Compare whether two 'ReplyRegistration's match
 matchRegistrations :: (Eq i) => ReplyRegistration i -> ReplyRegistration i -> Bool
-matchRegistrations (RR rtsA idA) (RR rtsB idB) =
-    idA == idB && (all (`elem` rtsA) rtsB || all (`elem` rtsB) rtsA)
+matchRegistrations (ReplyRegistration rtsA idA) (ReplyRegistration rtsB idB)
+  = (idA == idB) && (all (`elem` rtsA) rtsB || all (`elem` rtsB) rtsA)
 
--- | The actual type of a replay
+--------------------------------------------------------------------------------
+
+-- |
+-- The actual type of a reply.
 data Reply i a
-  = Answer !(Signal i a)
+  = Answer  !(Signal i a)
   | Timeout !(ReplyRegistration i)
   | Closed
   deriving (Eq, Show)
 
--- | The actual type representing a ReplyQueue
+--------------------------------------------------------------------------------
+
+-- |
+-- The actual type representing a reply queue.
 data ReplyQueue i a
   = ReplyQueue
-    { replyQueueQueue        :: !(TVar [(ReplyRegistration i, Chan (Reply i a), ThreadId)])
+    { replyQueueQueue        :: !(STM.TVar [ExpectedResponse i a])
       -- ^ Queue of expected responses
     , replyQueueDispatchChan :: !(Chan (Reply i a))
       -- ^ Channel for initial receiving of messages.
@@ -93,96 +114,161 @@ data ReplyQueue i a
       -- ^ This channel is needed for accepting requests from nodes.
       --   Only request will be processed, reply will be ignored.
     , replyQueueLogInfo      :: !(String -> IO ())
+      -- ^ FIXME: doc
+      --
+      --   FIXME: switch to Text
     , replyQueueLogError     :: !(String -> IO ())
+      -- ^ FIXME: doc
+      --
+      --   FIXME: switch to Text
     }
   deriving ()
 
+--------------------------------------------------------------------------------
 
--- | Create a new ReplyQueue
+-- |
+-- FIXME: doc
+data ExpectedResponse i a
+  = ExpectedResponse
+    { expectedResponseRegistration :: !(ReplyRegistration i)
+      -- ^ FIXME: doc
+    , expectedResponseReplyChan    :: !(Chan (Reply i a))
+      -- ^ FIXME: doc
+    , expectedResponseThreadID     :: !ThreadId
+      -- ^ FIXME: doc
+    }
+  deriving (Eq)
+
+--------------------------------------------------------------------------------
+
+-- |
+-- Create a new 'ReplyQueue'.
 emptyReplyQueue :: IO (ReplyQueue i a)
 emptyReplyQueue = emptyReplyQueueL (const $ pure ()) (const $ pure ())
 
--- | Create a new ReplyQueue with loggers
-emptyReplyQueueL :: (String -> IO ()) -> (String -> IO ()) -> IO (ReplyQueue i a)
+--------------------------------------------------------------------------------
+
+-- |
+-- Create a new 'ReplyQueue' with loggers.
+emptyReplyQueueL
+  :: (String -> IO ())
+  -> (String -> IO ())
+  -> IO (ReplyQueue i a)
 emptyReplyQueueL logInfo logError = do
   ReplyQueue
-    <$> atomically (newTVar [])
+    <$> STM.atomically (STM.newTVar [])
     <*> newChan
     <*> newChan
     <*> pure logInfo
     <*> pure logError
 
--- | Register a channel as handler for a reply
-register
-    :: ReplyRegistration i
-    -> ReplyQueue i a
-    -> Chan (Reply i a)
-    -> IO ()
-register reg rq chan = do
-    tId <- timeoutThread reg rq
-    atomically $ do
-        rQueue <- readTVar $ replyQueueQueue rq
-        writeTVar (replyQueueQueue rq) $ rQueue ++ [(reg, chan, tId)]
+--------------------------------------------------------------------------------
 
+-- |
+-- Register a channel as a handler for a reply.
+register
+  :: ReplyRegistration i
+  -> ReplyQueue i a
+  -> Chan (Reply i a)
+  -> IO ()
+register reg rq chan = do
+  tid <- timeoutThread reg rq
+  STM.atomically $ do
+    rQueue <- STM.readTVar $ replyQueueQueue rq
+    let er = ExpectedResponse reg chan tid
+    STM.writeTVar (replyQueueQueue rq) (rQueue ++ [er])
+    -- FIXME: this is slow, use a vector
+
+--------------------------------------------------------------------------------
+
+-- |
+-- FIXME: doc
 timeoutThread :: ReplyRegistration i -> ReplyQueue i a -> IO ThreadId
-timeoutThread reg rq = forkIO $ do
+timeoutThread reg rq = do
+  forkIO $ do
     -- Wait 5 seconds
-    threadDelay 5
+    threadDelay 5 -- FIXME: should be configurable?
 
     -- Remove the ReplyRegistration from the ReplyQueue
     -- TODO: What should be here?
-    -- myTId <- myThreadId
+    -- tid <- myThreadId
 
     -- Send Timeout signal
-    writeChan (replyQueueDispatchChan rq) . Timeout $ reg
+    writeChan (replyQueueDispatchChan rq) (Timeout reg)
 
--- | Dispatch a reply over a registered handler. If there is no handler,
---   dispatch it to the default one.
+--------------------------------------------------------------------------------
+
+-- |
+-- Dispatch a reply over a registered handler.
+-- If there is no handler, dispatch it to the default one.
 dispatch :: (Show i, Eq i) => Reply i a -> ReplyQueue i a -> IO ()
 dispatch reply rq = do
-    -- Try to find a registration matching the reply
-    result <- atomically $ do
-        rQueue <- readTVar (replyQueueQueue rq)
-        case toRegistration reply of
-            Just repReg -> case find (matches repReg) rQueue of
-                Just registration -> do
-                    -- Remove registration from queue
-                    writeTVar (replyQueueQueue rq) $ delete registration rQueue
-                    return . Just $ registration
+  let matches regA (ExpectedResponse regB _ _) = matchRegistrations regA regB
 
-                Nothing -> return Nothing
-            Nothing -> return Nothing
-    case result of
-        Just (reg, chan, tId) -> do
-            replyQueueLogInfo rq (" -- dispatch reply " ++ show reply ++ ": in queue, " ++ show reg)
-            -- Kill the timeout thread
-            killThread tId
+  -- Try to find a registration matching the reply
+  result <- STM.atomically $ do
+    rQueue <- STM.readTVar (replyQueueQueue rq)
+    let registrationMaybe = do
+          rr <- toRegistration reply
+          find (matches rr) rQueue
+    case registrationMaybe of
+      Just registration -> do
+        -- Remove registration from queue
+        STM.writeTVar (replyQueueQueue rq) $ delete registration rQueue
+        pure (Just registration)
+      Nothing -> pure Nothing
 
-            -- Send the reply
-            writeChan chan reply
+  case result of
+    -- FIXME: doc
+    Just (ExpectedResponse reg chan tid) -> do
+      replyQueueLogInfo rq (" -- dispatch reply "
+                            ++ show reply
+                            ++ ": in queue, "
+                            ++ show reg)
 
-        -- Send the reply over the default channel
-        Nothing -> do
-            replyQueueLogInfo rq (" -- dispatch reply " ++ show reply ++ ": not in queue")
-            writeChan (replyQueueRequestChan rq) reply
+      -- Kill the timeout thread
+      killThread tid
 
-    where matches regA (regB, _, _) = matchRegistrations regA regB
+      -- Send the reply
+      writeChan chan reply
 
-expectedReply :: (Show i, Eq i) => Reply i a -> ReplyQueue i a -> IO Bool
-expectedReply (toRegistration -> reply) rq
-    | Just repReg <- reply = isJust . find (matches repReg) <$> (readTVarIO $ replyQueueQueue rq)
-    | otherwise = pure False
-  where
-    matches regA (regB, _, _) = matchRegistrations regA regB
+    -- Send the reply over the default channel
+    Nothing -> do
+      replyQueueLogInfo rq (" -- dispatch reply "
+                            ++ show reply
+                            ++ ": not in queue")
+      writeChan (replyQueueRequestChan rq) reply
 
--- | Send Closed signal to all handlers and empty ReplyQueue
+--------------------------------------------------------------------------------
+
+-- |
+-- FIXME: doc
+expectedReply
+  :: (Show i, Eq i)
+  => Reply i a
+  -> ReplyQueue i a
+  -> IO Bool
+expectedReply reply rq = do
+  let matches regA (ExpectedResponse regB _ _) = matchRegistrations regA regB
+  case toRegistration reply of
+    Just rr -> do
+      q <- STM.readTVarIO (replyQueueQueue rq)
+      pure (isJust (find (matches rr) q))
+    Nothing -> pure False
+
+--------------------------------------------------------------------------------
+
+-- |
+-- Send 'Closed' signal to all handlers and empty the 'ReplyQueue'.
 flush :: ReplyQueue i a -> IO ()
 flush rq = do
-    rQueue <- atomically $ do
-        rQueue <- readTVar (replyQueueQueue rq)
-        writeTVar (replyQueueQueue rq) []
-        return rQueue
+  rQueue <- STM.atomically $ do
+    rQueue <- STM.readTVar (replyQueueQueue rq)
+    STM.writeTVar (replyQueueQueue rq) []
+    pure rQueue
 
-    forM_ rQueue $ \(_, chan, tId) -> do
-        killThread tId
-        writeChan chan Closed
+  forM_ rQueue $ \(ExpectedResponse _ chan tid) -> do
+    killThread tid
+    writeChan chan Closed
+
+--------------------------------------------------------------------------------

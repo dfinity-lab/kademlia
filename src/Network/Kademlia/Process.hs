@@ -299,7 +299,7 @@ sendPing
   -> Chan (Reply i a)
   -> IO ()
 sendPing h node chan = do
-  expect h (RR [R_PONG] (nodePeer node)) $ chan
+  expect h (ReplyRegistration [R_PONG] (nodePeer node)) $ chan
   send h (nodePeer node) PING
 
 -- | Signal a node timeout and return whether it should be repinged.
