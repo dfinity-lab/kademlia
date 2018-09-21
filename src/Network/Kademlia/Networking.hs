@@ -1,31 +1,36 @@
-{-|
-Module      : Network.Kademlia.Networking
-Description : All of the UDP network code
+--------------------------------------------------------------------------------
 
-Network.Kademlia.Networking implements all the UDP network functionality.
--}
+-- |
+-- Module      : Network.Kademlia.Networking
+-- Description : All of the UDP network code
+--
+-- "Network.Kademlia.Networking" implements all the UDP network functionality.
 
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+--------------------------------------------------------------------------------
 
 module Network.Kademlia.Networking
-       ( KademliaHandle
-       , handleSocket
-       , handleReplyQueue
-       , openOn
-       , openOnL
-       , startRecvProcess
-       , send
-       , expect
-       , closeK
-       , handleLogInfo
-       , handleLogError
-       , handleLogError'
-       ) where
+  ( KademliaHandle
+  , handleSocket
+  , handleReplyQueue
+  , openOn
+  , openOnL
+  , startRecvProcess
+  , send
+  , expect
+  , closeK
+  , handleLogInfo
+  , handleLogError
+  , handleLogError'
+  ) where
+
+--------------------------------------------------------------------------------
 
 import           Control.Concurrent
-                 (Chan, MVar, ThreadId, forkIO, isEmptyMVar, killThread,
-                 newChan, newEmptyMVar, readChan, takeMVar, tryPutMVar,
-                 writeChan, yield)
+                 (ThreadId, forkIO, killThread, yield)
+import           Control.Concurrent.Chan
+                 (Chan, newChan, readChan, writeChan)
+import           Control.Concurrent.MVar
+                 (MVar, isEmptyMVar, newEmptyMVar, takeMVar, tryPutMVar)
 import           Control.Exception           (SomeException, catch, finally)
 import           Control.Monad               (forM_, forever, unless, void)
 import qualified Data.ByteString             as BS
@@ -49,6 +54,8 @@ import           Network.Kademlia.ReplyQueue
 import           Network.Kademlia.Types
                  (Command, Peer (..), Serialize (..), toPeer)
 
+--------------------------------------------------------------------------------
+
 -- | A handle to a UDP socket running the Kademlia connection
 data KademliaHandle i a
   = KademliaHandle
@@ -62,42 +69,65 @@ data KademliaHandle i a
     }
   deriving ()
 
-handleLogError' :: KademliaHandle i a -> SomeException -> IO ()
+--------------------------------------------------------------------------------
+
+handleLogError'
+  :: KademliaHandle i a
+  -> SomeException
+  -> IO ()
 handleLogError' h = handleLogError h . show
 
-openOn
-    :: (Show i, Serialize i, Serialize a)
-    => String -> String -> i -> ReplyQueue i a -> IO (KademliaHandle i a)
-openOn host port id' rq = openOnL host port id' lim rq (const $ pure ()) (const $ pure ())
-  where
-    lim = configMsgSizeLimit defaultConfig
+--------------------------------------------------------------------------------
 
--- | Open a Kademlia connection on specified port and return a corresponding
---   KademliaHandle
-openOnL :: (Show i, Serialize i, Serialize a) => String -> String
-       -> i -> Int -> ReplyQueue i a -> (String -> IO ()) -> (String -> IO ())
-       -> IO (KademliaHandle i a)
+openOn
+  :: (Show i, Serialize i, Serialize a)
+  => String
+  -> String
+  -> i
+  -> ReplyQueue i a
+  -> IO (KademliaHandle i a)
+openOn host port id' rq
+  = let lim = configMsgSizeLimit defaultConfig
+    in openOnL host port id' lim rq (const (pure ())) (const (pure ()))
+
+--------------------------------------------------------------------------------
+
+-- |
+-- Open a Kademlia connection on specified port and return a corresponding
+-- 'KademliaHandle'.
+openOnL
+  :: (Show i, Serialize i, Serialize a)
+  => String
+  -> String
+  -> i
+  -> Int
+  -> ReplyQueue i a
+  -> (String -> IO ())
+  -> (String -> IO ())
+  -> IO (KademliaHandle i a)
 openOnL host port id' lim rq logInfo logError = withSocketsDo $ do
-    -- Get addr to bind to
-    serveraddrs <- getAddrInfo
+  -- Get address to bind to
+  serveraddrs <- getAddrInfo
                  (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
                  (Just host)
                  (Just port)
 
-    -- TODO: support IPV6 by binding to two sockets
-    let serveraddr = head $ filter (\a -> addrFamily a == AF_INET) serveraddrs
+  -- TODO: support IPV6 by binding to two sockets
+  let serveraddr = head $ filter (\a -> addrFamily a == AF_INET) serveraddrs
 
-    -- Create socket and bind to it
-    sock <- socket (addrFamily serveraddr) Datagram defaultProtocol
-    setSocketOption sock ReuseAddr 1
-    bind sock (addrAddress serveraddr)
+  -- Create socket and bind to it
+  sock <- socket (addrFamily serveraddr) Datagram defaultProtocol
+  setSocketOption sock ReuseAddr 1
+  bind sock (addrAddress serveraddr)
 
-    chan <- newChan
-    tId <- forkIO $ sendProcessL sock lim id' chan logInfo logError
-    mvar <- newEmptyMVar
+  chan <- newChan
+  tid <- forkIO $ sendProcessL sock lim id' chan logInfo logError
+  mvar <- newEmptyMVar
 
-    -- Return the handle
-    return $ KademliaHandle sock tId chan rq mvar logInfo logError
+  -- Return the handle
+  pure $ KademliaHandle sock tid chan rq mvar logInfo logError
+
+--------------------------------------------------------------------------------
 
 sendProcessL
     :: (Show i, Serialize i, Serialize a)
@@ -108,24 +138,34 @@ sendProcessL
     -> (String -> IO ())
     -> (String -> IO ())
     -> IO ()
-sendProcessL sock lim nid chan logInfo logError =
-    (withSocketsDo . forever . (`catch` logSomeError') . void $ do
+sendProcessL sock lim nid chan logInfo logError = do
+  let logSomeError' :: SomeException -> IO ()
+      logSomeError' e = logError $ "Caught error " ++ show e
+
+  -- Close socket on exception (ThreadKilled)
+  (`finally` close sock) $ do
+    withSocketsDo $ forever $ do
+      (`catch` logSomeError') $ void $ do
         pair@(cmd, Peer host port) <- readChan chan
 
-        logInfo $ "Send process: sending .. " ++ show pair ++ " (id " ++ show nid ++ ")"
+        logInfo ("Send process: sending .. "
+                 ++ show pair
+                 ++ " (id " ++ show nid ++ ")")
+
         -- Get Peer's address
-        (peeraddr:_) <- getAddrInfo Nothing (Just (Text.unpack host))
-                          (Just . show $ port)
+        -- FIXME: partial pattern match
+        (peeraddr : _) <- getAddrInfo
+                          Nothing
+                          (Just (Text.unpack host))
+                          (Just (show port))
 
         -- Send the signal
         case serialize lim nid cmd of
-            Left err   -> logError err
-            Right sigs -> forM_ sigs $ \sig -> S.sendTo sock sig (addrAddress peeraddr))
-                -- Close socket on exception (ThreadKilled)
-                `finally` close sock
-  where
-    logSomeError' :: SomeException -> IO ()
-    logSomeError' e = logError $ "Caught error " ++ show e
+          Left  err  -> logError err
+          Right sigs -> do let addr = addrAddress peeraddr
+                           forM_ sigs (\sig -> S.sendTo sock sig addr)
+
+--------------------------------------------------------------------------------
 
 -- | Dispatch the receiving process
 --
@@ -134,62 +174,82 @@ sendProcessL sock lim nid chan logInfo logError =
 --
 --   This throws an exception if called a second time.
 startRecvProcess
-    :: (Show i, Serialize i, Serialize a)
-    => KademliaHandle i a
-    -> IO ()
+  :: (Show i, Serialize i, Serialize a)
+  => KademliaHandle i a
+  -> IO ()
 startRecvProcess kh = do
-    tId <- forkIO $ (withSocketsDo . forever $ do
-        -- Read from socket
-        (received, addr) <- S.recvFrom (handleSocket kh) 1500
-        -- Try to create peer
-        peer <- toPeer addr
-        case peer of
-            Nothing -> handleLogError kh ("Unknown peer " ++ show addr)
-            Just p  ->
-                -- Try parsing the signal
-                case parse p received of
-                    Left _    ->
-                      handleLogError kh ("Can't parse " ++ show (BS.length received) ++ " bytes from " ++ show peer)
-                    Right sig -> do
-                        handleLogInfo kh ("Received signal " ++ show sig ++ " from " ++ show p)
-                        -- Send the signal to the receivng process of instance
-                        writeChan (replyQueueDispatchChan . handleReplyQueue $ kh) $ Answer sig
-                        handleLogInfo kh (" -- added from signal " ++ show p ++ " to chan")
-        )
-            -- Send Closed reply to all handlers
-            `finally` do
-                flush $ handleReplyQueue kh
-                writeChan (replyQueueDispatchChan (handleReplyQueue kh)) Closed
+  let finalize = do
+        flush $ handleReplyQueue kh
+        writeChan (replyQueueDispatchChan (handleReplyQueue kh)) Closed
 
-    success <- tryPutMVar (handleRecvThread kh) tId
-    unless success $ ioError $ userError "Receiving process already running"
+  tid <- forkIO $ (`finally` finalize) $ withSocketsDo $ forever $ do
+    -- Read from socket
+    (received, addr) <- S.recvFrom (handleSocket kh) 1500
+    -- Try to create peer
+    peer <- toPeer addr
+    case peer of
+      Nothing -> handleLogError kh ("Unknown peer " ++ show addr)
+      Just p  -> do
+        -- Try parsing the signal
+        case parse p received of
+          Left _ -> do
+            handleLogError kh ("Can't parse "
+                               ++ show (BS.length received)
+                               ++ " bytes from "
+                               ++ show peer)
+          Right sig -> do
+            handleLogInfo kh ("Received signal "
+                              ++ show sig
+                              ++ " from "
+                              ++ show p)
+            -- Send the signal to the receivng process of instance
+            writeChan (replyQueueDispatchChan (handleReplyQueue kh)) (Answer sig)
+            handleLogInfo kh (" -- added from signal "
+                              ++ show p
+                              ++ " to chan")
 
--- | Send a Signal to a Peer over the connection corresponding to the
---   KademliaHandle
-send :: KademliaHandle i a
-     -> Peer
-     -> Command i a
-     -> IO ()
+  success <- tryPutMVar (handleRecvThread kh) tid
+  unless success $ ioError $ userError "Receiving process already running"
+
+--------------------------------------------------------------------------------
+
+-- |
+-- Send a Signal to a Peer over the connection corresponding to the
+-- 'KademliaHandle'.
+send
+  :: KademliaHandle i a
+  -> Peer
+  -> Command i a
+  -> IO ()
 send kh peer cmd = writeChan (handleSendChan kh) (cmd, peer)
 
--- | Register a handler channel for a Reply
-expect :: KademliaHandle i a
-       -> ReplyRegistration i
-       -> Chan (Reply i a)
-       -> IO ()
+--------------------------------------------------------------------------------
+
+-- | Register a handler channel for a 'Reply'.
+expect
+  :: KademliaHandle i a
+  -> ReplyRegistration i
+  -> Chan (Reply i a)
+  -> IO ()
 expect kh reg = register reg . handleReplyQueue $ kh
 
--- | Close the connection corresponding to a KademliaHandle
-closeK :: KademliaHandle i a -> IO ()
+--------------------------------------------------------------------------------
+
+-- | Close the connection corresponding to a 'KademliaHandle'.
+closeK
+  :: KademliaHandle i a
+  -> IO ()
 closeK kh = do
-    -- Kill recvThread
-    empty <- isEmptyMVar . handleRecvThread $ kh
-    unless empty $ do
-        tId <- takeMVar . handleRecvThread $ kh
-        killThread tId
+  -- Kill recvThread
+  empty <- isEmptyMVar (handleRecvThread kh)
+  unless empty $ do
+    tid <- takeMVar (handleRecvThread kh)
+    killThread tid
 
-    -- Kill sendThread
-    killThread . handleSendThread $ kh
+  -- Kill sendThread
+  killThread (handleSendThread kh)
 
-    close $ handleSocket kh
-    yield
+  close $ handleSocket kh
+  yield
+
+--------------------------------------------------------------------------------
