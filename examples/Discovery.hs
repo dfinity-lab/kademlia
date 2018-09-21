@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 import           Control.Arrow             (first)
 import           Control.Monad             (when)
 import           Control.Monad.Random
@@ -31,32 +33,38 @@ type KademliaInstance = K.KademliaInstance KademliaID KademliaValue
 instance K.Serialize KademliaID where
     toBS (KademliaID bs)
         | B.length bs >= kIdLength = B.take kIdLength bs
-        | otherwise                = error $ "KademliaID to short!"
+        | otherwise                = error $ "KademliaID too short!"
 
     fromBS bs
         | B.length bs >= kIdLength = Right . first KademliaID . B.splitAt kIdLength $ bs
         | otherwise                = Left "ByteString too short!"
 
 instance Binary Pong where
-    put _ = putWord8 1
-    get = do
-        w <- getWord8
-        if w == 1
-        then pure Pong
-        else fail "no parse pong"
+  put _ = putWord8 1
+  get = do
+    w <- getWord8
+    if w == 1
+      then pure Pong
+      else fail "no parse pong"
 
-data NodeConfig = NodeConfig
+data NodeConfig
+  = NodeConfig
     { ncInstance  :: KademliaInstance
     , ncNodeIndex :: Int
     , ncPort      :: PortNumber
     , ncKey       :: KademliaID
     , ncBctEdges  :: Int
     }
+  deriving ()
 
 type NodeMode r = S.StateT NodeConfig IO r
 
-data Command = Dump String -- ^ Dump peers list to the file with name log/<name><node id>.log
-             | Sleep Int   -- ^ Sleep for a given amount of seconds
+data Command
+  = Dump !String
+    -- ^ Dump peers list to the file with name log/<name><node id>.log
+  | Sleep !Int
+    -- ^ Sleep for a given amount of seconds
+  deriving ()
 
 kIdLength :: Integral a => a
 kIdLength = 20

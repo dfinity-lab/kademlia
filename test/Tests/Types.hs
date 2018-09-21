@@ -5,7 +5,7 @@ Description : Tests for Network.Kademlia.Types
 Tests specific to Network.Kademlia.Types.
 -}
 
-module Types
+module Tests.Types
        ( fromByteStructCheck
        , toByteStructCheck
        ) where
@@ -17,7 +17,7 @@ import           Test.QuickCheck         ()
 import           Network.Kademlia.Config (defaultConfig, usingConfig)
 import           Network.Kademlia.Types  (fromByteStruct, toBS, toByteStruct)
 
-import           TestTypes               (IdType)
+import           Tests.TestTypes         (IdType)
 
 -- | Checks wether toByteStruct converts corretctly
 toByteStructCheck :: IdType -> Bool

@@ -1,14 +1,16 @@
 {-|
-Module      : Protocol
+Module      : Tests.Protocol
 Description : Test for Network.Kademlia.Protocol
 
 Tests specific to Network.Kademlia.Protocol.
 -}
 
-module Protocol
+module Tests.Protocol
        ( parseCheck
        , lengthCheck
        ) where
+
+import           Control.Arrow             (left, (>>>))
 
 import qualified Data.ByteString           as B
 import           Test.QuickCheck
@@ -18,13 +20,16 @@ import           Network.Kademlia.Protocol (parse, serialize)
 import           Network.Kademlia.Types
                  (Command (..), Node (..), Signal (..))
 
-import           TestTypes                 (IdType (..))
+import           Tests.TestTypes           (IdType (..))
 
 -- | A signal is the same as its serialized form parsed
 parseCheck :: Signal IdType String -> Property
-parseCheck s = test . (>>= parse (peer . source $ s))
-             . fmap head . serialize 99999 nid . command $ s
-    where nid = nodeId . source $ s
+parseCheck s = test $ do
+  serialized <- serialize 99999 nid (signalCommand s)
+  left show
+    $ parse (nodePeer (signalSource s))
+    $ head serialized
+    where nid = nodeId (signalSource s)
           test (Left   _) = counterexample "Parsing failed" False
           test (Right s') = counterexample
             ("Signals differ:\nIn:  " ++ show s ++ "\nOut: "
@@ -33,8 +38,8 @@ parseCheck s = test . (>>= parse (peer . source $ s))
 -- | Commands are cut into small enough pieces.
 lengthCheck :: Signal IdType String -> Property
 lengthCheck s =
-    isReturnNodes (command s) ==>
-    case serialize partLen (nodeId . source $ s) $ command s of
+    isReturnNodes (signalCommand s) ==>
+    case serialize partLen (nodeId (signalSource s)) (signalCommand s) of
         Left er   -> counterexample ("Serialization error: " ++ er) False
         Right bss -> conjoin $ flip map bss $
             \bs -> counterexample (err bs) $ B.length bs <= partLen
