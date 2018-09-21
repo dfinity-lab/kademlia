@@ -1,13 +1,14 @@
 {-|
-Module      : Instance
+Module      : Tests.Instance
 Description : Tests for Network.Kademlia.Instance
 
 Tests specific to Network.Kademlia.Instance.
 -}
 
-module Instance
+{-# LANGUAGE OverloadedStrings #-}
+
+module Tests.Instance
        ( handlesPingCheck
-       , storeAndFindValueCheck
        , trackingKnownPeersCheck
        , isNodeBannedCheck
        , banNodeCheck
@@ -43,10 +44,10 @@ import           Network.Kademlia.ReplyQueue
 import qualified Network.Kademlia.Tree       as T
 import           Network.Kademlia.Types
                  (Command (..), Node (..), Peer (..), Serialize (..),
-                 Signal (..), command)
+                 Signal (..), Timestamp)
 
-import           TestTypes                   (IdType (..), NodeBunch (..))
-import           Tree                        (withTree)
+import           Tests.TestTypes             (IdType (..), NodeBunch (..))
+import           Tests.Tree                  (withTree)
 
 -- | The default set of peers
 peers :: (Peer, Peer)
@@ -71,57 +72,20 @@ handlesPingCheck = do
     rq <- emptyReplyQueue
 
     khA <- openOn "127.0.0.1" "1122" idA rq :: IO (KademliaHandle IdType String)
-    kiB <- create "127.0.0.1" 1123 idB   :: IO (KademliaInstance IdType String)
+    kiB <- create ("127.0.0.1", 1123) ("127.0.0.1", 1123) idB
+           :: IO (KademliaInstance IdType String)
 
     startRecvProcess khA
 
     send khA pB PING
-    (Answer sig) <- readChan . dispatchChan $ rq :: IO (Reply IdType String)
+    (Answer sig) <- readChan . replyQueueDispatchChan $ rq :: IO (Reply IdType String)
 
     closeK khA
     close kiB
 
-    assertEqual "" (command sig) PONG
-    assertEqual "" (peer . source $ sig) pB
-    assertEqual "" (nodeId . source $ sig) idB
-
-    return ()
-
--- | Make sure a stored value can be retrieved
-storeAndFindValueCheck :: IdType -> String -> Property
-storeAndFindValueCheck key value = monadicIO $ do
-    let (_, pB) = peers
-    (idA, idB) <- ids
-
-    receivedCmd <- run $ do
-        rq <- emptyReplyQueue
-
-        khA <- openOn "127.0.0.1" "1122" idA rq
-        kiB <- create "127.0.0.1" 1123 idB :: IO (KademliaInstance IdType String)
-
-        startRecvProcess khA
-
-        send khA pB $ STORE key value
-        send khA pB $ FIND_VALUE key
-
-        -- There is a race condition, so the instance will sometimes try to store
-        -- the value in the handle, before replying with a RETURN_VALUE
-        (Answer sig) <- readChan . dispatchChan $ rq :: IO (Reply IdType String)
-        cmdSig <- case command sig of
-                STORE _ _ -> do
-                    (Answer asig) <- readChan . dispatchChan $ rq :: IO (Reply IdType String)
-                    return asig
-                _ -> return sig
-
-        closeK khA
-        close kiB
-
-        return . command $ cmdSig
-
-    let cmd = RETURN_VALUE key value :: Command IdType String
-
-    monitor . counterexample $ "Commands inequal: " ++ show cmd ++ " /= " ++ show receivedCmd
-    assert $ cmd == receivedCmd
+    assertEqual "" (signalCommand sig) PONG
+    assertEqual "" (nodePeer (signalSource sig)) pB
+    assertEqual "" (nodeId   (signalSource sig)) idB
 
     return ()
 
@@ -135,12 +99,13 @@ trackingKnownPeersCheck = monadicIO $ do
         rq <- emptyReplyQueue :: IO (ReplyQueue IdType String)
 
         khA <- openOn "127.0.0.1" "1122" idA rq
-        kiB <- create "127.0.0.1" 1123 idB :: IO (KademliaInstance IdType String)
+        kiB <- create ("127.0.0.1", 1123) ("127.0.0.1", 1123) idB
+               :: IO (KademliaInstance IdType String)
 
         startRecvProcess khA
 
         send khA pB $ PING
-        () <$ readChan (dispatchChan rq)
+        () <$ readChan (replyQueueDispatchChan rq)
 
         node <- lookupNode kiB idA
 
@@ -152,57 +117,61 @@ trackingKnownPeersCheck = monadicIO $ do
     assert . isJust $ node
 
     nodes <- run . dumpPeers $ kiB
-    assert $ nodes == [fromJust node]
+    assert $ nodes == [(fromJust node, 0 :: Timestamp)]
 
     return ()
 
 -- | Make sure `isNodeBanned` works correctly
 isNodeBannedCheck :: Assertion
 isNodeBannedCheck = do
-    inst <- create "127.0.0.1" 1123 idA :: IO (KademliaInstance IdType String)
+    let (idA, idB) = (IT (C.pack "hello"), IT (C.pack "herro"))
+    let (peerA, peerB) = (Peer "127.0.0.1" 1123, Peer "127.0.0.1" 1124)
+    let (nodeA, nodeB) = (Node peerA idA, Node peerB idB)
+
+    inst <- create ("127.0.0.1", 1123) ("127.0.0.1", 1123) idA
+            :: IO (KademliaInstance IdType String)
+
     let check msg ans = do
-            ban <- isNodeBanned inst idB
+            ban <- isNodeBanned inst peerB
             assertEqual msg ban ans
 
     check "Initial" False
 
-    banNode inst idB $ BanForever
+    banNode inst nodeB $ BanForever
     check "Plain ban set" True
 
-    banNode inst idB $ NoBan
+    banNode inst nodeB $ NoBan
     check "Reset ban to False" False
 
     close inst
 
-    where idA = IT . C.pack $ "hello"
-          idB = IT . C.pack $ "herro"
-
+    where
 -- | Messages from banned node are ignored
 banNodeCheck :: Assertion
 banNodeCheck = do
-    let (_, pB) = peers
+    let (peerA, peerB) = peers
 
     let (Right (idA, _)) = fromBS . C.replicate 32 $ 'a'
                            :: Either String (IdType, C.ByteString)
     let (Right (idB, _)) = fromBS . C.replicate 32 $ 'b'
                            :: Either String (IdType, C.ByteString)
-
     rq <- emptyReplyQueue
 
     khA <- openOn "127.0.0.1" "1122" idA rq :: IO (KademliaHandle IdType String)
-    kiB <- create "127.0.0.1" 1123 idB   :: IO (KademliaInstance IdType String)
+    kiB <- create ("127.0.0.1", 1123) ("127.0.0.1", 1123) idB
+           :: IO (KademliaInstance IdType String)
 
-    banNode kiB idA $ BanForever
+    banNode kiB (Node peerA idA) $ BanForever
     startRecvProcess khA
 
-    send khA pB PING
+    send khA peerB PING
 
     -- if no message received for long enough, put OK message
-    void . forkIO $ do
+    void $ forkIO $ do
         threadDelay 10000
-        writeChan (dispatchChan rq) Closed
+        writeChan (replyQueueDispatchChan rq) Closed
 
-    res <- readChan . dispatchChan $ rq :: IO (Reply IdType String)
+    res <- readChan . replyQueueDispatchChan $ rq :: IO (Reply IdType String)
 
     closeK khA
     close kiB
@@ -213,12 +182,12 @@ banNodeCheck = do
 
     return ()
 
--- Snapshot is serialized and deserealised well
+-- Snapshot is serialized and deserialized well
 snapshotCheck :: NodeBunch IdType -> IdType -> [BanState] -> Property
-snapshotCheck = withTree $ \tree nodes -> return $ \bans ->
-        let banned = M.fromList $ zip (map nodeId nodes) bans
-            sp     = KSP tree banned
-            sp'    = decode . encode $ sp
-        in  conjoin [ ((===) `on` spBanned) sp sp'
-                    , ((===) `on` sort . T.toList . spTree) sp sp'
+snapshotCheck = withTree $ \tree nodes -> pure $ \bans ->
+        let banned = M.fromList $ zip (map nodePeer nodes) bans
+            sp     = KademliaSnapshot tree banned
+            sp'    = sp -- FIXME: decode (encode sp)
+        in  conjoin [ ((===) `on` snapshotBanned)                 sp sp'
+                    , ((===) `on` sort . T.toList . snapshotTree) sp sp'
                     ]

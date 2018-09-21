@@ -1,18 +1,19 @@
 {-|
-Module      : Implementation
+Module      : Tests.Implementation
 Description : Tests for Network.Kademlia.Implementation
 
 Tests specific to Network.Kademlia.Implementation.
 -}
 
-module Implementation
+{-# LANGUAGE OverloadedStrings #-}
+
+module Tests.Implementation
        ( idClashCheck
        , joinCheck
        , joinFullCheck
        , lookupNodesCheck
        , nodeDownCheck
        , joinBannedCheck
-       , storeAndLookupCheck
        ) where
 
 import           Control.Applicative       ()
@@ -31,15 +32,18 @@ import           Network.Kademlia.Instance
 import qualified Network.Kademlia.Tree     as T
 import           Network.Kademlia.Types    (Node (..), Peer (..))
 
-import           TestTypes                 (IdBunch (..), IdType (..))
+import           Tests.TestTypes           (IdBunch (..), IdType (..))
 
 constructNetwork :: IdBunch IdType -> PropertyM IO [KademliaInstance IdType String]
 constructNetwork idBunch = run $ do
     let entryNode = Node (Peer "127.0.0.1" 3123) (head . getIds $ idBunch)
-    instances <- zipWithM (K.create "127.0.0.1") [3123..] (getIds idBunch)
-                        :: IO [KademliaInstance IdType String]
-
-    forM_ (tail instances) (`K.joinNetwork` entryNode)
+    instances <- zipWithM
+                 (\p -> K.create ("127.0.0.1", p) ("127.0.0.1", p))
+                 [3123..]
+                 (getIds idBunch)
+                 :: IO [KademliaInstance IdType String]
+    forM_ (tail instances) $ \inst -> do
+      K.joinNetwork inst (nodePeer entryNode)
     return instances
 
 joinNetworkVerifier :: Int -> IdBunch IdType -> Property
@@ -51,32 +55,39 @@ joinNetworkVerifier bucketThreshold idBunch = monadicIO $ do
     assert $ and present
   where
     isBucketFilled inst = do
-        tree <- atomically . readTVar . sTree . state $ inst
+        tree <- atomically (readTVar (stateTree (instanceState inst)))
         let treeLen = length $ T.toList tree
         return $ treeLen >= bucketThreshold
 
 -- | Checks that nodes contain at least @k@ neighbours in their buckets
 joinCheck :: IdBunch IdType -> Property
-joinCheck = joinNetworkVerifier $ defaultK
+joinCheck = joinNetworkVerifier defaultK
 
 -- | Checks that nodes from RETURN_NODES request were added to bucket: [CSL-258][CSL-260]
 -- Thus node should contain at least @k + k/2@ nodes.
 joinFullCheck :: IdBunch IdType -> Property
 joinFullCheck = joinNetworkVerifier (defaultK + defaultRoutingSharingN)
+-- FIXME: this is broken
 
 -- | Make sure ID clashes are detected properly
 idClashCheck :: IdType -> IdType -> Property
 idClashCheck idA idB = monadicIO $ do
+-- FIXME: this is broken
     let _ = map (Peer "127.0.0.1") [1123..]
         ids = [idA, idB, idA]
         entryNode = Node (Peer "127.0.0.1" 1124) idB
 
     joinResult <- run $ do
-        insts@[kiA, _, kiB] <- zipWithM (K.create "127.0.0.1") [1123..] ids
-                            :: IO [KademliaInstance IdType String]
+        insts@[kiA, _, kiB] <- zipWithM
+                               (\p -> K.create
+                                      ("127.0.0.1", p)
+                                      ("127.0.0.1", p))
+                               [1123..]
+                               ids
+                               :: IO [KademliaInstance IdType String]
 
-        () <$ K.joinNetwork kiA entryNode
-        joinResult <- K.joinNetwork kiB $ entryNode
+        () <$ K.joinNetwork kiA (nodePeer entryNode)
+        joinResult <- K.joinNetwork kiB (nodePeer entryNode)
 
         mapM_ K.close insts
 
@@ -84,13 +95,12 @@ idClashCheck idA idB = monadicIO $ do
 
     assert $ joinResult == K.IDClash
 
-
 -- | Make sure an offline peer is detected
 nodeDownCheck :: Assertion
 nodeDownCheck = do
     let entryNode = Node (Peer "127.0.0.1" 1124) idB
-    inst <- K.create "127.0.0.1" 1123 idA :: IO (KademliaInstance IdType String)
-    joinResult <- K.joinNetwork inst entryNode
+    inst <- K.create ("127.0.0.1", 1123) ("127.0.0.1", 1123) idA :: IO (KademliaInstance IdType String)
+    joinResult <- K.joinNetwork inst (nodePeer entryNode)
     K.close inst
 
     assertEqual "" joinResult K.NodeDown
@@ -105,41 +115,16 @@ joinBannedCheck idA idB = monadicIO $ do
     let entryNode = Node (Peer "127.0.0.1" 1124) idB
 
     joinResult <- run $ do
-        inst <- K.create "127.0.0.1" 1123 idA :: IO (KademliaInstance IdType String)
+        inst <- K.create ("127.0.0.1", 1123) ("127.0.0.1", 1123) idA :: IO (KademliaInstance IdType String)
 
-        K.banNode inst idB $ BanForever
-        joinResult <- K.joinNetwork inst entryNode
+        K.banNode inst entryNode BanForever
+        joinResult <- K.joinNetwork inst (nodePeer entryNode)
 
         K.close inst
 
         return joinResult
 
     assert $ joinResult == K.NodeBanned
-
-storeAndLookupCheck :: IdBunch IdType -> IdBunch IdType -> Property
-storeAndLookupCheck ids keys = monadicIO $ do
-    let keyVal = zip (getIds keys) vals
-    instances <- constructNetwork ids
-
-    success <- run $ do
-        mapM_ (doStore instances) keyVal
-
-        success <- forM instances $ \inst ->
-            and <$> mapM (tryLookup inst) keyVal
-
-        mapM_ K.close instances
-
-        return success
-
-    assert . and $ success
-
-    where vals = take 20 . map (replicate 5) $ ['a'..]
-          doStore instances (key, val) = K.store (head instances) key val
-          tryLookup inst (key, val) = do
-            result <- K.lookup inst key
-            case result of
-                Just (v, _) -> return $ v == val
-                _           -> return False
 
 lookupNodesCheck :: IdBunch IdType -> Property
 lookupNodesCheck ids = monadicIO $ do
