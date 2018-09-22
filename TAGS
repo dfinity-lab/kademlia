@@ -1,0 +1,623 @@
+
+./test/Tests/Tree.hs,853
+module Tests.TreeTests.Tree10,11
+usingDefaultConfig usingDefaultConfig46,47
+usingDefaultConfig usingDefaultConfig47,48
+lookupCheck lookupCheck50,51
+lookupCheck lookupCheck51,52
+insertCheck insertCheck54,55
+insertCheck insertCheck55,56
+deleteCheck deleteCheck64,65
+deleteCheck deleteCheck65,66
+withTree withTree74,75
+withTree withTree76,77
+splitCheck splitCheck83,84
+splitCheck splitCheck84,85
+bucketSizeCheck bucketSizeCheck96,97
+bucketSizeCheck bucketSizeCheck97,98
+refreshCheck refreshCheck103,104
+refreshCheck refreshCheck104,105
+findClosestCheck findClosestCheck114,115
+findClosestCheck findClosestCheck115,116
+pickupNotClosestDifferentCheck pickupNotClosestDifferentCheck131,132
+pickupNotClosestDifferentCheck pickupNotClosestDifferentCheck132,133
+viewCheck viewCheck139,140
+viewCheck viewCheck140,141
+
+./test/Tests/Types.hs,217
+module Tests.TypesTests.Types10,11
+toByteStructCheck toByteStructCheck29,30
+toByteStructCheck toByteStructCheck30,31
+fromByteStructCheck fromByteStructCheck37,38
+fromByteStructCheck fromByteStructCheck38,39
+
+./test/Tests/ReplyQueue.hs,253
+module Tests.ReplyQueueTests.ReplyQueue10,11
+repliesCheck repliesCheck35,36
+repliesCheck repliesCheck36,37
+removedCheck removedCheck73,74
+removedCheck removedCheck74,75
+toRegistration toRegistration89,90
+toRegistration toRegistration90,91
+
+./test/Tests/TestTypes.hs,407
+module Tests.TestTypesTests.TestTypes14,15
+newtype IdType IdType44,45
+newtype IdType = ITIT44,45
+    { getBS getBS45,46
+instance instance49,50
+newtype NodeBunch NodeBunch96,97
+newtype NodeBunch i = NB NB96,97
+      nodes nodes97,98
+individual individual105,106
+individual individual106,107
+newtype IdBunch IdBunch110,111
+newtype IdBunch i = IB IB110,111
+      getIds getIds111,112
+
+./test/Tests/Implementation.hs,482
+module Tests.ImplementationTests.Implementation14,15
+constructNetwork constructNetwork47,48
+joinNetworkVerifier joinNetworkVerifier64,65
+joinCheck joinCheck81,82
+joinFullCheck joinFullCheck92,93
+idClashCheck idClashCheck102,103
+nodeDownCheck nodeDownCheck129,130
+nodeDownCheck nodeDownCheck130,131
+joinBannedCheck joinBannedCheck144,145
+joinBannedCheck joinBannedCheck145,146
+lookupNodesCheck lookupNodesCheck163,164
+lookupNodesCheck lookupNodesCheck164,165
+
+./test/Tests/Protocol.hs,184
+module Tests.ProtocolTests.Protocol10,11
+import import20,21
+parseCheck parseCheck32,33
+parseCheck parseCheck33,34
+lengthCheck lengthCheck45,46
+lengthCheck lengthCheck46,47
+
+./test/Tests/Instance.hs,561
+module Tests.InstanceTests.Instance14,15
+import import35,36
+peers peers59,60
+peers peers60,61
+ids ids65,66
+ids ids66,67
+handlesPingCheck handlesPingCheck69,70
+handlesPingCheck handlesPingCheck70,71
+trackingKnownPeersCheck trackingKnownPeersCheck99,100
+trackingKnownPeersCheck trackingKnownPeersCheck100,101
+isNodeBannedCheck isNodeBannedCheck131,132
+isNodeBannedCheck isNodeBannedCheck132,133
+banNodeCheck banNodeCheck155,156
+banNodeCheck banNodeCheck156,157
+snapshotCheck snapshotCheck191,192
+snapshotCheck snapshotCheck192,193
+
+./test/Tests/Networking.hs,255
+module Tests.NetworkingTests.Networking14,15
+valueSet valueSet41,42
+valueSet valueSet42,43
+sendCheck sendCheck52,53
+sendCheck sendCheck53,54
+expectCheck expectCheck82,83
+expectCheck expectCheck83,84
+rType rType109,110
+rType rType110,111
+
+./test/Test.hs,942
+module Main Main11,12
+main main36,37
+main main37,38
+tests tests39,40
+tests tests40,41
+quickCheckTests quickCheckTests42,43
+quickCheckTests quickCheckTests43,44
+typeChecks typeChecks53,54
+typeChecks typeChecks54,55
+protocolChecks protocolChecks61,62
+protocolChecks protocolChecks62,63
+networkingChecks networkingChecks69,70
+networkingChecks networkingChecks70,71
+treeChecks treeChecks77,78
+treeChecks treeChecks78,79
+instanceChecks instanceChecks97,98
+instanceChecks instanceChecks98,99
+replyQueueChecks replyQueueChecks109,110
+replyQueueChecks replyQueueChecks110,111
+implementationChecks implementationChecks117,118
+implementationChecks implementationChecks118,119
+hUnitTests hUnitTests131,132
+hUnitTests hUnitTests132,133
+instanceCases instanceCases137,138
+instanceCases instanceCases138,139
+implementationCases implementationCases143,144
+implementationCases implementationCases144,145
+
+./Setup.hs,15
+main main1,2
+
+./src/DFINITY/Discovery.hs,222
+module DFINITY.DiscoveryDFINITY.Discovery118,119
+create create174,175
+createL createL192,193
+createLFromSnapshot createLFromSnapshot214,215
+close close229,230
+usingKademliaInstance usingKademliaInstance238,239
+
+./src/DFINITY/Discovery/Implementation.hs,1007
+module DFINITY.Discovery.ImplementationDFINITY.Discovery.Implementation16,17
+data JoinResultJoinResult48,49
+  = JoinSuccessJoinSuccess49,50
+  | NodeDownNodeDown50,51
+  | IDClashIDClash51,52
+  | NodeBannedNodeBanned52,53
+joinNetwork joinNetwork63,64
+lookupNode lookupNode120,121
+data LookupState LookupState156,157
+  = LookupStateLookupState157,158
+    { lookupStateInstance lookupStateInstance158,159
+    , lookupStateTargetId lookupStateTargetId159,160
+    , lookupStateReplyChan lookupStateReplyChan160,161
+    , lookupStateKnown lookupStateKnown161,162
+    , lookupStatePending lookupStatePending162,163
+    , lookupStatePolled lookupStatePolled163,164
+type LookupM LookupM170,171
+type LookupM i i170,171
+runLookup runLookup179,180
+startLookup startLookup195,196
+waitForReply waitForReply224,225
+waitForReplyDo waitForReplyDo235,236
+continueLookup continueLookup322,323
+sendSignalWithoutPolled sendSignalWithoutPolled391,392
+sendSignal sendSignal419,420
+
+./src/DFINITY/Discovery/Utils.hs,199
+module DFINITY.Discovery.UtilsDFINITY.Discovery.Utils10,11
+threadDelay threadDelay24,25
+threadDelay threadDelay25,26
+hour hour35,36
+hour hour36,37
+minute minute44,45
+minute minute45,46
+
+./src/DFINITY/Discovery/Config.hs,1075
+module DFINITY.Discovery.ConfigDFINITY.Discovery.Config14,15
+data KademliaConfigKademliaConfig38,39
+  = KademliaConfigKademliaConfig39,40
+    { configK configK40,41
+    , configPingTime configPingTime45,46
+    , configNumLookupNodes configNumLookupNodes52,53
+    , configMsgSizeLimit configMsgSizeLimit57,58
+    , configRoutingSharingN configRoutingSharingN64,65
+    , configCacheSize configCacheSize69,70
+    , configPingLimit configPingLimit75,76
+defaultK defaultK86,87
+defaultK defaultK87,88
+defaultRoutingSharingN defaultRoutingSharingN90,91
+defaultRoutingSharingN defaultRoutingSharingN91,92
+defaultConfig defaultConfig94,95
+defaultConfigdefaultConfig95,96
+newtype WithConfigT WithConfigT110,111
+  = WithConfigTWithConfigT111,112
+    { getWithConfigT getWithConfigT112,113
+type WithConfig WithConfig119,120
+type WithConfig a a119,120
+getConfig getConfig124,125
+getConfig getConfig125,126
+usingConfigT usingConfigT128,129
+usingConfigT usingConfigT129,130
+usingConfig usingConfig132,133
+usingConfig usingConfig133,134
+
+./src/DFINITY/Discovery/Process.hs,378
+module DFINITY.Discovery.ProcessDFINITY.Discovery.Process13,14
+start start53,54
+receivingProcess receivingProcess69,70
+receivingProcessDo receivingProcessDo91,92
+backgroundProcess backgroundProcess128,129
+pingProcess pingProcess163,164
+handleCommand handleCommand180,181
+returnNodes returnNodes197,198
+sendPing sendPing221,222
+timeoutNode timeoutNode231,232
+
+./src/DFINITY/Discovery/Networking.hs,688
+module DFINITY.Discovery.NetworkingDFINITY.Discovery.Networking10,11
+data KademliaHandle KademliaHandle59,60
+  = KademliaHandleKademliaHandle60,61
+    { handleSocket handleSocket61,62
+    , handleSendThread handleSendThread62,63
+    , handleSendChan handleSendChan63,64
+    , handleReplyQueue handleReplyQueue64,65
+    , handleRecvThread handleRecvThread65,66
+    , handleLogInfo handleLogInfo66,67
+    , handleLogError handleLogError67,68
+handleLogError' handleLogError'77,78
+openOn openOn88,89
+openOnL openOnL107,108
+sendProcessL sendProcessL140,141
+startRecvProcess startRecvProcess179,180
+send send223,224
+expect expect233,234
+closeK closeK241,242
+
+./src/DFINITY/Discovery/Types.hs,1055
+module DFINITY.Discovery.TypesDFINITY.Discovery.Types15,16
+data PeerPeer56,57
+  = PeerPeer57,58
+    { peerHost peerHost58,59
+    , peerPort peerPort59,60
+instance instance63,64
+unwrapPort unwrapPort66,67
+unwrapPort unwrapPort67,68
+wrapPort wrapPort69,70
+wrapPort wrapPort70,71
+data Node Node75,76
+  = NodeNode76,77
+    { nodePeer nodePeer77,78
+    , nodeId nodeId78,79
+sortByDistanceTo sortByDistanceTo93,94
+class Serialize Serialize103,104
+class Serialize Serialize103,104
+  fromBS fromBS104,105
+  toBS toBS105,106
+type ByteStruct ByteStruct110,111
+toByteStruct toByteStruct119,120
+fromByteStruct fromByteStruct130,131
+distance distance153,154
+toPeer toPeer162,163
+toPeer toPeer163,164
+data Signal Signal171,172
+  = SignalSignal172,173
+    { signalSource signalSource173,174
+    , signalCommand signalCommand174,175
+data Command Command182,183
+  = PINGPING183,184
+  | PONGPONG184,185
+  | FIND_NODE FIND_NODE185,186
+  | RETURN_NODES RETURN_NODES186,187
+type Timestamp Timestamp201,202
+
+./src/DFINITY/Discovery/ReplyQueue.hs,1597
+module DFINITY.Discovery.ReplyQueueDFINITY.Discovery.ReplyQueue14,15
+data ReplyType ReplyType48,49
+  = R_PONGR_PONG49,50
+  | R_RETURN_NODES R_RETURN_NODES50,51
+data ReplyRegistration ReplyRegistration57,58
+  = ReplyRegistrationReplyRegistration58,59
+    { replyTypes replyTypes59,60
+    , replyOrigin replyOrigin61,62
+toRegistration toRegistration70,71
+toRegistration toRegistration71,72
+matchRegistrations matchRegistrations85,86
+matchRegistrations matchRegistrations86,87
+data Reply Reply93,94
+  = Answer Answer94,95
+  | Timeout Timeout95,96
+  | ClosedClosed96,97
+data ReplyQueue ReplyQueue103,104
+  = ReplyQueueReplyQueue104,105
+    { replyQueueQueue replyQueueQueue105,106
+    , replyQueueDispatchChan replyQueueDispatchChan107,108
+    , replyQueueRequestChan replyQueueRequestChan110,111
+    , replyQueueLogInfo replyQueueLogInfo113,114
+    , replyQueueLogError replyQueueLogError117,118
+data ExpectedResponse ExpectedResponse128,129
+  = ExpectedResponseExpectedResponse129,130
+    { expectedResponseRegistration expectedResponseRegistration130,131
+    , expectedResponseReplyChan expectedResponseReplyChan132,133
+    , expectedResponseThreadID expectedResponseThreadID134,135
+emptyReplyQueue emptyReplyQueue143,144
+emptyReplyQueue emptyReplyQueue144,145
+emptyReplyQueueL emptyReplyQueueL154,155
+register register171,172
+timeoutThread timeoutThread183,184
+timeoutThread timeoutThread184,185
+dispatch dispatch201,202
+dispatch dispatch202,203
+expectedReply expectedReply248,249
+flush flush260,261
+flush flush261,262
+
+./src/DFINITY/Discovery/Protocol/Parse.hs,658
+module DFINITY.Discovery.Protocol.ParseDFINITY.Discovery.Protocol.Parse14,15
+data ParseErrorParseError50,51
+  = ParseError_UnexpectedEndOfInputParseError_UnexpectedEndOfInput51,52
+  | ParseError_InvalidCommandIDParseError_InvalidCommandID52,53
+  | ParseError_SerializeFailed ParseError_SerializeFailed53,54
+type Parse Parse58,59
+parse parse71,72
+parseSignal parseSignal80,81
+parseSerialize parseSerialize93,94
+parseSplit parseSplit105,106
+skipCharacter skipCharacter118,119
+parseWord8 parseWord8129,130
+parseWord16 parseWord16141,142
+parseNode parseNode159,160
+parseKBucketparseKBucket173,174
+parseCommand parseCommand184,185
+
+./src/DFINITY/Discovery/Protocol/Serialize.hs,222
+module DFINITY.Discovery.Protocol.SerializeDFINITY.Discovery.Protocol.Serialize16,17
+commandId commandId41,42
+commandId commandId42,43
+serialize serialize58,59
+nodeToArg nodeToArg93,94
+nodeToArg nodeToArg94,95
+
+./src/DFINITY/Discovery/Protocol.hs,67
+module DFINITY.Discovery.ProtocolDFINITY.Discovery.Protocol16,17
+
+./src/DFINITY/Discovery/Instance.hs,1281
+module DFINITY.Discovery.InstanceDFINITY.Discovery.Instance15,16
+data KademliaInstance KademliaInstance61,62
+  = KademliaInstanceKademliaInstance62,63
+    { instanceNode instanceNode63,64
+    , instanceHandle instanceHandle65,66
+    , instanceState instanceState67,68
+    , instanceExpirationThreads instanceExpirationThreads69,70
+    , instanceConfig instanceConfig71,72
+data BanStateBanState80,81
+  = -- --81,82
+  = -- | The The81,82
+  | -- --83,84
+  | -- | The The83,84
+  | -- --87,88
+  | -- | The The87,88
+data KademliaState KademliaState95,96
+  = KademliaStateKademliaState96,97
+    { stateTree stateTree97,98
+    , stateBanned stateBanned99,100
+data KademliaSnapshot KademliaSnapshot108,109
+  = KademliaSnapshotKademliaSnapshot109,110
+    { snapshotTree snapshotTree110,111
+    , snapshotBanned snapshotBanned112,113
+newInstance newInstance128,129
+insertNode insertNode144,145
+lookupNode lookupNode163,164
+lookupNodeByPeer lookupNodeByPeer178,179
+dumpPeers dumpPeers192,193
+isNodeBanned isNodeBanned209,210
+banNode banNode236,237
+takeSnapshot' takeSnapshot'249,250
+takeSnapshot takeSnapshot262,263
+restoreInstance restoreInstance275,276
+viewBuckets viewBuckets293,294
+peersToNodeIds peersToNodeIds305,306
+
+./src/DFINITY/Discovery/Tree.hs,1309
+module DFINITY.Discovery.TreeDFINITY.Discovery.Tree22,23
+data NodeTree NodeTree66,67
+  = NodeTreeNodeTree67,68
+    { nodeTreeOwnId nodeTreeOwnId68,69
+    , nodeTreeRoot nodeTreeRoot69,70
+    , nodeTreePeers nodeTreePeers70,71
+newtype PingInfoPingInfo77,78
+  = PingInfoPingInfo78,79
+    { pingInfoLastSeen pingInfoLastSeen79,80
+data NodeTreeElem NodeTreeElem87,88
+  = -- --88,89
+  = -- | FIXME: FIXME:88,89
+  | -- --94,95
+  | -- | FIXME: FIXME:94,95
+type NodeCache NodeCache105,106
+type NodeCache i i105,106
+type NodesWithPing NodesWithPing108,109
+type NodeTreeFunction NodeTreeFunction113,114
+type Depth Depth122,123
+type Validity Validity125,126
+create create130,131
+create create131,132
+lookup lookup142,143
+delete delete157,158
+handleTimeout handleTimeout178,179
+refresh refresh218,219
+insert insert236,237
+split split310,311
+split split311,312
+pickupRandom pickupRandom342,343
+findClosest findClosest363,364
+extractId extractId404,405
+extractId extractId405,406
+idMatches idMatches410,411
+idMatches idMatches411,412
+toView toView416,417
+toView toView417,418
+toList toList429,430
+toList toList430,431
+fold fold435,436
+fold fold436,437
+modifyAt modifyAt455,456
+applyAt applyAt470,471
+modifyApplyAt modifyApplyAt505,506
+
+./examples/Discovery.hs,1502
+data Pong Pong20,21
+data Pong = PongPong20,21
+instance instance23,24
+type KademliaValue KademliaValue27,28
+newtype KademliaID KademliaID28,29
+newtype KademliaID = KademliaID KademliaID28,29
+type KademliaInstance KademliaInstance31,32
+data NodeConfigNodeConfig49,50
+  = NodeConfigNodeConfig50,51
+    { ncInstance ncInstance51,52
+    , ncNodeIndex ncNodeIndex52,53
+    , ncPort ncPort53,54
+    , ncKey ncKey54,55
+    , ncBctEdges ncBctEdges55,56
+type NodeMode NodeMode59,60
+type NodeMode r r59,60
+data CommandCommand61,62
+  = Dump Dump62,63
+  | Sleep Sleep64,65
+kIdLength kIdLength68,69
+kIdLength kIdLength69,70
+randomSeed randomSeed71,72
+randomSeed randomSeed72,73
+toBSBinary toBSBinary74,75
+toBSBinary toBSBinary75,76
+fromBSBinary fromBSBinary77,78
+fromBSBinary fromBSBinary78,79
+parseCommand parseCommand83,84
+parseCommand parseCommand84,85
+generateByteString generateByteString89,90
+generateByteString generateByteString90,91
+generateKey generateKey92,93
+generateKey generateKey93,94
+generateKeys generateKeys95,96
+generateKeys generateKeys96,97
+generatePorts generatePorts106,107
+generatePorts generatePorts107,108
+listToStr listToStr110,111
+listToStr listToStr111,112
+takeRandom takeRandom113,114
+takeRandom takeRandom114,115
+executeCommand executeCommand117,118
+executeCommand executeCommand118,119
+connectToPeer connectToPeer135,136
+connectToPeer connectToPeer136,137
+main main138,139
+main main139,140
+
+./dist/build/discovery/autogen/Paths_kademlia.hs,1245
+module Paths_kademlia Paths_kademlia3,4
+catchIO catchIO17,18
+catchIO catchIO19,20
+catchIO catchIO23,24
+catchIO catchIO25,26
+version version27,28
+version version28,29
+bindir, libdir, dynlibdir, datadir, libexecdir, sysconfdir sysconfdir29,30
+bindir, libdir, dynlibdir, datadir, libexecdir,libexecdir29,30
+bindir, libdir, dynlibdir, datadir,datadir29,30
+bindir, libdir, dynlibdir,dynlibdir29,30
+bindir, libdir,libdir29,30
+bindir,bindir29,30
+bindir bindir31,32
+libdir libdir32,33
+dynlibdir dynlibdir33,34
+datadir datadir34,35
+libexecdir libexecdir35,36
+sysconfdir sysconfdir36,37
+getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir, getSysconfDir getSysconfDir38,39
+getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir,getLibexecDir38,39
+getBinDir, getLibDir, getDynLibDir, getDataDir,getDataDir38,39
+getBinDir, getLibDir, getDynLibDir,getDynLibDir38,39
+getBinDir, getLibDir,getLibDir38,39
+getBinDir,getBinDir38,39
+getBinDir getBinDir39,40
+getLibDir getLibDir40,41
+getDynLibDir getDynLibDir41,42
+getDataDir getDataDir42,43
+getLibexecDir getLibexecDir43,44
+getSysconfDir getSysconfDir44,45
+getDataFileName getDataFileName46,47
+getDataFileName getDataFileName47,48
+
+./dist/build/library-test/autogen/Paths_dfinity_discovery.hs,1263
+module Paths_dfinity_discovery Paths_dfinity_discovery3,4
+catchIO catchIO17,18
+catchIO catchIO19,20
+catchIO catchIO23,24
+catchIO catchIO25,26
+version version27,28
+version version28,29
+bindir, libdir, dynlibdir, datadir, libexecdir, sysconfdir sysconfdir29,30
+bindir, libdir, dynlibdir, datadir, libexecdir,libexecdir29,30
+bindir, libdir, dynlibdir, datadir,datadir29,30
+bindir, libdir, dynlibdir,dynlibdir29,30
+bindir, libdir,libdir29,30
+bindir,bindir29,30
+bindir bindir31,32
+libdir libdir32,33
+dynlibdir dynlibdir33,34
+datadir datadir34,35
+libexecdir libexecdir35,36
+sysconfdir sysconfdir36,37
+getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir, getSysconfDir getSysconfDir38,39
+getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir,getLibexecDir38,39
+getBinDir, getLibDir, getDynLibDir, getDataDir,getDataDir38,39
+getBinDir, getLibDir, getDynLibDir,getDynLibDir38,39
+getBinDir, getLibDir,getLibDir38,39
+getBinDir,getBinDir38,39
+getBinDir getBinDir39,40
+getLibDir getLibDir40,41
+getDynLibDir getDynLibDir41,42
+getDataDir getDataDir42,43
+getLibexecDir getLibexecDir43,44
+getSysconfDir getSysconfDir44,45
+getDataFileName getDataFileName46,47
+getDataFileName getDataFileName47,48
+
+./dist/build/autogen/Paths_dfinity_discovery.hs,1263
+module Paths_dfinity_discovery Paths_dfinity_discovery3,4
+catchIO catchIO17,18
+catchIO catchIO19,20
+catchIO catchIO23,24
+catchIO catchIO25,26
+version version27,28
+version version28,29
+bindir, libdir, dynlibdir, datadir, libexecdir, sysconfdir sysconfdir29,30
+bindir, libdir, dynlibdir, datadir, libexecdir,libexecdir29,30
+bindir, libdir, dynlibdir, datadir,datadir29,30
+bindir, libdir, dynlibdir,dynlibdir29,30
+bindir, libdir,libdir29,30
+bindir,bindir29,30
+bindir bindir31,32
+libdir libdir32,33
+dynlibdir dynlibdir33,34
+datadir datadir34,35
+libexecdir libexecdir35,36
+sysconfdir sysconfdir36,37
+getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir, getSysconfDir getSysconfDir38,39
+getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir,getLibexecDir38,39
+getBinDir, getLibDir, getDynLibDir, getDataDir,getDataDir38,39
+getBinDir, getLibDir, getDynLibDir,getDynLibDir38,39
+getBinDir, getLibDir,getLibDir38,39
+getBinDir,getBinDir38,39
+getBinDir getBinDir39,40
+getLibDir getLibDir40,41
+getDynLibDir getDynLibDir41,42
+getDataDir getDataDir42,43
+getLibexecDir getLibexecDir43,44
+getSysconfDir getSysconfDir44,45
+getDataFileName getDataFileName46,47
+getDataFileName getDataFileName47,48
+
+./dist/build/autogen/Paths_kademlia.hs,1245
+module Paths_kademlia Paths_kademlia3,4
+catchIO catchIO17,18
+catchIO catchIO19,20
+catchIO catchIO23,24
+catchIO catchIO25,26
+version version27,28
+version version28,29
+bindir, libdir, dynlibdir, datadir, libexecdir, sysconfdir sysconfdir29,30
+bindir, libdir, dynlibdir, datadir, libexecdir,libexecdir29,30
+bindir, libdir, dynlibdir, datadir,datadir29,30
+bindir, libdir, dynlibdir,dynlibdir29,30
+bindir, libdir,libdir29,30
+bindir,bindir29,30
+bindir bindir31,32
+libdir libdir32,33
+dynlibdir dynlibdir33,34
+datadir datadir34,35
+libexecdir libexecdir35,36
+sysconfdir sysconfdir36,37
+getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir, getSysconfDir getSysconfDir38,39
+getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir,getLibexecDir38,39
+getBinDir, getLibDir, getDynLibDir, getDataDir,getDataDir38,39
+getBinDir, getLibDir, getDynLibDir,getDynLibDir38,39
+getBinDir, getLibDir,getLibDir38,39
+getBinDir,getBinDir38,39
+getBinDir getBinDir39,40
+getLibDir getLibDir40,41
+getDynLibDir getDynLibDir41,42
+getDataDir getDataDir42,43
+getLibexecDir getLibexecDir43,44
+getSysconfDir getSysconfDir44,45
+getDataFileName getDataFileName46,47
+getDataFileName getDataFileName47,48

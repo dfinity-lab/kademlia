@@ -27,9 +27,10 @@ module Network.Kademlia.ReplyQueue
 
 --------------------------------------------------------------------------------
 
-import           Control.Concurrent      (ThreadId, forkIO, killThread)
+import qualified Control.Concurrent      as Conc
 import           Control.Concurrent.Chan (Chan, newChan, writeChan)
 import qualified Control.Concurrent.STM  as STM
+
 import           Control.Monad           (forM_)
 import           Data.List               (delete, find)
 import           Data.Maybe              (isJust)
@@ -134,7 +135,7 @@ data ExpectedResponse i a
       -- ^ FIXME: doc
     , expectedResponseReplyChan    :: !(Chan (Reply i a))
       -- ^ FIXME: doc
-    , expectedResponseThreadID     :: !ThreadId
+    , expectedResponseThreadID     :: !Conc.ThreadId
       -- ^ FIXME: doc
     }
   deriving (Eq)
@@ -183,9 +184,9 @@ register reg rq chan = do
 
 -- |
 -- FIXME: doc
-timeoutThread :: ReplyRegistration i -> ReplyQueue i a -> IO ThreadId
+timeoutThread :: ReplyRegistration i -> ReplyQueue i a -> IO Conc.ThreadId
 timeoutThread reg rq = do
-  forkIO $ do
+  Conc.forkIO $ do
     -- Wait 5 seconds
     threadDelay 5 -- FIXME: should be configurable?
 
@@ -227,7 +228,7 @@ dispatch reply rq = do
                             ++ show reg)
 
       -- Kill the timeout thread
-      killThread tid
+      Conc.killThread tid
 
       -- Send the reply
       writeChan chan reply
@@ -268,7 +269,7 @@ flush rq = do
     pure rQueue
 
   forM_ rQueue $ \(ExpectedResponse _ chan tid) -> do
-    killThread tid
+    Conc.killThread tid
     writeChan chan Closed
 
 --------------------------------------------------------------------------------
