@@ -1,0 +1,9 @@
+- Get unit tests running
+- Get examples running
+- Fix `squashme` commits
+- Rename all record accessors to `_Foo_bar`
+- Switch over to structured logging
+- Switch over to structured errors
+- Parameterize on a network stack struct
+- Rename library?
+- Remove KademliaSnapshot code if it's not being used
