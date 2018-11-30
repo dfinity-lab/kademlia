@@ -1,17 +1,18 @@
 --------------------------------------------------------------------------------
 
 -- |
--- Module      : Network.Kademlia.Protocol.Parsing
+-- Module      : Network.Kademlia.Protocol.Parse
 -- Description : Implementation of the protocol parsing
 --
--- "Network.Kademlia.Protocol.Parsing" implements the actual protocol parsing.
+-- "Network.Kademlia.Protocol.Parsing" implements the actual parsing
+-- of 'Command's.
 --
 -- It made sense to split it off of "Network.Kademlia.Protocol" as it made both
 -- cleaner and more readable.
 
 --------------------------------------------------------------------------------
 
-module Network.Kademlia.Protocol.Parsing
+module Network.Kademlia.Protocol.Parse
   ( parse
   , parseSerialize
   , parseSignal

@@ -40,7 +40,8 @@ library
                        Network.Kademlia.Process
                        Network.Kademlia.Networking
                        Network.Kademlia.Protocol
-                       Network.Kademlia.Protocol.Parsing
+                       Network.Kademlia.Protocol.Parse
+                       Network.Kademlia.Protocol.Serialize
                        Network.Kademlia.ReplyQueue
                        Network.Kademlia.Tree
                        Network.Kademlia.Types
