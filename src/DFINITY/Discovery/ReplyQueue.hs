@@ -1,10 +1,10 @@
 --------------------------------------------------------------------------------
 
 -- |
--- Module      : Network.Kademlia.ReplyQueue
--- Description : A queue allowing to register handlers for expected replies
+-- Module:      DFINITY.Discovery.ReplyQueue
+-- Description: A queue allowing to register handlers for expected replies
 --
--- "Network.Kademlia.ReplyQueue" implements a queue designed for registering
+-- "DFINITY.Discovery.ReplyQueue" implements a queue designed for registering
 -- handlers for expected replies.
 --
 -- The handlers are represented by unbound channels from the
@@ -12,7 +12,7 @@
 
 --------------------------------------------------------------------------------
 
-module Network.Kademlia.ReplyQueue
+module DFINITY.Discovery.ReplyQueue
   ( ReplyType (..)
   , ReplyRegistration (..)
   , Reply (..)
@@ -35,10 +35,10 @@ import           Control.Monad           (forM_)
 import           Data.List               (delete, find)
 import           Data.Maybe              (isJust)
 
-import           Network.Kademlia.Types
+import           DFINITY.Discovery.Types
                  (Command (PONG, RETURN_NODES), Node (nodePeer), Peer,
                  Signal (signalCommand, signalSource))
-import           Network.Kademlia.Utils  (threadDelay)
+import           DFINITY.Discovery.Utils (threadDelay)
 
 --------------------------------------------------------------------------------
 

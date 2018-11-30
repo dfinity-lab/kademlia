@@ -1,38 +1,46 @@
+--------------------------------------------------------------------------------
+
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeSynonymInstances       #-}
 
-{-|
-Module      : Tests.TestTypes
-Description : Types and Generators needed for general testing
--}
+--------------------------------------------------------------------------------
+
+-- |
+-- Module:      Tests.TestTypes
+-- Description: Types and Generators needed for general testing
+
+--------------------------------------------------------------------------------
 
 module Tests.TestTypes
-       ( IdType    (..)
-       , NodeBunch (..)
-       , IdBunch   (..)
-       ) where
+  ( IdType    (..)
+  , NodeBunch (..)
+  , IdBunch   (..)
+  ) where
 
+--------------------------------------------------------------------------------
 
-import           Control.Arrow             (first)
-import           Control.Monad             (liftM, liftM2)
-import           Data.Binary               (Binary)
-import qualified Data.ByteString           as B
-import qualified Data.ByteString.Char8     as C
-import           Data.Function             (on)
-import           Data.List                 (nubBy)
-import qualified Data.Text                 as Text
-import           Data.Word                 (Word16)
-import           Network.Socket            (PortNumber)
+import           Control.Arrow              (first)
+import           Control.Monad              (liftM, liftM2)
+import           Data.Binary                (Binary)
+import qualified Data.ByteString            as B
+import qualified Data.ByteString.Char8      as C
+import           Data.Function              (on)
+import           Data.List                  (nubBy)
+import qualified Data.Text                  as Text
+import           Data.Word                  (Word16)
+import           Network.Socket             (PortNumber)
 
 import           Test.QuickCheck
-                 (Arbitrary (..), Gen, oneof, suchThat, vector, vectorOf)
-import           Test.QuickCheck.Instances ()
+                 (Arbitrary (..), Gen, oneof, suchThat, vectorOf)
+import           Test.QuickCheck.Instances  ()
 
-import           Network.Kademlia.Instance (BanState (..))
-import           Network.Kademlia.Types
+import           DFINITY.Discovery.Instance (BanState (..))
+import           DFINITY.Discovery.Types
                  (Command (..), Node (..), Peer (..), Serialize (..),
                  Signal (..))
+
+--------------------------------------------------------------------------------
 
 newtype IdType = IT
     { getBS :: B.ByteString
@@ -113,3 +121,5 @@ instance Arbitrary BanState where
         , return NoBan
         , BanTill <$> arbitrary
         ]
+
+--------------------------------------------------------------------------------

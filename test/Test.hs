@@ -1,12 +1,17 @@
-{-|
-Module      : Tests
-Description : Tests for the modules
+--------------------------------------------------------------------------------
 
-A few tests using QuickCheck and Tasty to make sure everything works
-the way it's supposed to.
--}
+-- |
+-- Module: Tests
+-- Description: Tests for the modules
+--
+-- A few tests using QuickCheck and Tasty to make sure everything works
+-- the way it's supposed to.
+
+--------------------------------------------------------------------------------
 
 module Main where
+
+--------------------------------------------------------------------------------
 
 import           Test.Tasty            (TestTree, defaultMain, testGroup)
 import           Test.Tasty.HUnit      as HU
@@ -27,6 +32,8 @@ import           Tests.Tree
                  viewCheck)
 import           Tests.Types           (fromByteStructCheck, toByteStructCheck)
 
+--------------------------------------------------------------------------------
+
 main :: IO ()
 main = defaultMain tests
 
@@ -45,7 +52,7 @@ quickCheckTests = testGroup "QuickCheck"
     ]
 
 typeChecks :: TestTree
-typeChecks = testGroup "Network.Kademlia.Types" [
+typeChecks = testGroup "DFINITY.Discovery.Types" [
       QC.testProperty "ByteString to ByteStruct conversion works"
          toByteStructCheck
     , QC.testProperty "ByteStruct to ByteString conversion works"
@@ -53,7 +60,7 @@ typeChecks = testGroup "Network.Kademlia.Types" [
     ]
 
 protocolChecks :: TestTree
-protocolChecks = testGroup "Network.Kademlia.Protocol" [
+protocolChecks = testGroup "DFINITY.Discovery.Protocol" [
       QC.testProperty "Protocol Serializing and Parsing works"
          parseCheck
     , QC.testProperty "Protocol messages are cut in pieces of required size"
@@ -61,7 +68,7 @@ protocolChecks = testGroup "Network.Kademlia.Protocol" [
     ]
 
 networkingChecks :: TestTree
-networkingChecks = testGroup "Network.Kademlia.Networking" [
+networkingChecks = testGroup "DFINITY.Discovery.Networking" [
       QC.testProperty "Sending and Receiving works"
          sendCheck
     , QC.testProperty "Expecting works the way it's supposed to"
@@ -69,7 +76,7 @@ networkingChecks = testGroup "Network.Kademlia.Networking" [
     ]
 
 treeChecks :: TestTree
-treeChecks = testGroup "Network.Kademlia.Tree" [
+treeChecks = testGroup "DFINITY.Discovery.Tree" [
       QC.testProperty "Inserting into the Tree works"
          insertCheck
     , QC.testProperty "Deleting from the Tree works"
@@ -89,7 +96,7 @@ treeChecks = testGroup "Network.Kademlia.Tree" [
     ]
 
 instanceChecks :: TestTree
-instanceChecks = testGroup "Network.Kademlia.Instance"
+instanceChecks = testGroup "DFINITY.Discovery.Instance"
     [ QC.testProperty "Peers are put into the tree on first encounter"
          trackingKnownPeersCheck
     , HU.testCase "Setting ban and checking ban status works"
@@ -101,7 +108,7 @@ instanceChecks = testGroup "Network.Kademlia.Instance"
     ]
 
 replyQueueChecks :: TestTree
-replyQueueChecks = testGroup "Network.Kademlia.ReplyQueue" [
+replyQueueChecks = testGroup "DFINITY.Discovery.ReplyQueue" [
       QC.testProperty "Registering replies works"
           repliesCheck
     , QC.testProperty "Registrations are removed after being dispatched"
@@ -109,7 +116,7 @@ replyQueueChecks = testGroup "Network.Kademlia.ReplyQueue" [
     ]
 
 implementationChecks :: TestTree
-implementationChecks = testGroup "Network.Kademlia.Implementation" [
+implementationChecks = testGroup "DFINITY.Discovery.Implementation" [
        QC.testProperty "Joining the Network works"
          joinCheck
      , QC.testProperty "Joining the Network full works"
@@ -129,13 +136,15 @@ hUnitTests = testGroup "HUnit" [
     ]
 
 instanceCases :: TestTree
-instanceCases = testGroup "Network.Kademlia.Instance" [
+instanceCases = testGroup "DFINITY.Discovery.Instance" [
       HU.testCase "PINGs are automaticly handled"
          handlesPingCheck
     ]
 
 implementationCases :: TestTree
-implementationCases = testGroup "Network.Kademlia.Implementation" [
+implementationCases = testGroup "DFINITY.Discovery.Implementation" [
       HU.testCase "Trying to join over an offline Node is detected"
          nodeDownCheck
     ]
+
+--------------------------------------------------------------------------------

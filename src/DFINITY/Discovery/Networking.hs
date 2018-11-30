@@ -1,14 +1,14 @@
 --------------------------------------------------------------------------------
 
 -- |
--- Module      : Network.Kademlia.Networking
--- Description : All of the UDP network code
+-- Module:      DFINITY.Discovery.Networking
+-- Description: All of the UDP network code
 --
--- "Network.Kademlia.Networking" implements all the UDP network functionality.
+-- "DFINITY.Discovery.Networking" implements all the UDP network functionality.
 
 --------------------------------------------------------------------------------
 
-module Network.Kademlia.Networking
+module DFINITY.Discovery.Networking
   ( KademliaHandle
   , handleSocket
   , handleReplyQueue
@@ -31,27 +31,27 @@ import           Control.Concurrent.Chan
                  (Chan, newChan, readChan, writeChan)
 import           Control.Concurrent.MVar
                  (MVar, isEmptyMVar, newEmptyMVar, takeMVar, tryPutMVar)
-import           Control.Exception           (SomeException, catch, finally)
-import           Control.Monad               (forM_, forever, unless, void)
-import qualified Data.ByteString             as BS
+import           Control.Exception            (SomeException, catch, finally)
+import           Control.Monad                (forM_, forever, unless, void)
+import qualified Data.ByteString              as BS
 import           Network.Socket
                  (AddrInfo (..), AddrInfoFlag (AI_PASSIVE), Family (..),
                  Socket, SocketOption (ReuseAddr), SocketType (Datagram),
                  addrAddress, addrFlags, bind, close, defaultHints,
                  defaultProtocol, getAddrInfo, setSocketOption, socket,
                  withSocketsDo)
-import qualified Network.Socket.ByteString   as S
-import           System.IO.Error             (ioError, userError)
+import qualified Network.Socket.ByteString    as S
+import           System.IO.Error              (ioError, userError)
 
-import qualified Data.Text                   as Text
+import qualified Data.Text                    as Text
 
-import           Network.Kademlia.Config
+import           DFINITY.Discovery.Config
                  (KademliaConfig (..), defaultConfig)
-import           Network.Kademlia.Protocol   (parse, serialize)
-import           Network.Kademlia.ReplyQueue
+import           DFINITY.Discovery.Protocol   (parse, serialize)
+import           DFINITY.Discovery.ReplyQueue
                  (Reply (..), ReplyQueue (replyQueueDispatchChan),
                  ReplyRegistration, flush, register)
-import           Network.Kademlia.Types
+import           DFINITY.Discovery.Types
                  (Command, Peer (..), Serialize (..), toPeer)
 
 --------------------------------------------------------------------------------
