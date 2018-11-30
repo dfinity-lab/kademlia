@@ -5,14 +5,14 @@
 --------------------------------------------------------------------------------
 
 -- |
--- Module      : Network.Kademlia.Config
--- Description : Configuration parameters for a Kademlia instance.
+-- Module:      DFINITY.Discovery.Config
+-- Description: Configuration parameters for a Kademlia instance.
 --
 -- FIXME: doc
 
 --------------------------------------------------------------------------------
 
-module Network.Kademlia.Config
+module DFINITY.Discovery.Config
   ( KademliaConfig (..)
   , WithConfigT (..)
   , WithConfig
@@ -26,10 +26,10 @@ module Network.Kademlia.Config
 
 --------------------------------------------------------------------------------
 
-import           Control.Monad.Identity (Identity, runIdentity)
-import           Control.Monad.Reader   (ReaderT, ask, runReaderT)
-import           Control.Monad.Trans    (MonadTrans)
-import           Network.Kademlia.Utils (minute)
+import           Control.Monad.Identity  (Identity, runIdentity)
+import           Control.Monad.Reader    (ReaderT, ask, runReaderT)
+import           Control.Monad.Trans     (MonadTrans)
+import           DFINITY.Discovery.Utils (minute)
 
 --------------------------------------------------------------------------------
 

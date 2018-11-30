@@ -6,22 +6,22 @@
 --------------------------------------------------------------------------------
 
 -- |
--- Module      : Network.Kademlia.Protocol
--- Description : Implementation of the actual protocol
+-- Module:      DFINITY.Discovery.Protocol
+-- Description: Implementation of the actual protocol
 --
--- "Network.Kademlia.Protocol" implements the parsing and serialization of
+-- "DFINITY.Discovery.Protocol" implements the parsing and serialization of
 -- 'ByteString's into values of type 'Command'.
 
 --------------------------------------------------------------------------------
 
-module Network.Kademlia.Protocol
+module DFINITY.Discovery.Protocol
   ( serialize
   , parse
   ) where
 
 --------------------------------------------------------------------------------
 
-import           Network.Kademlia.Protocol.Parse     (parse)
-import           Network.Kademlia.Protocol.Serialize (serialize)
+import           DFINITY.Discovery.Protocol.Parse     (parse)
+import           DFINITY.Discovery.Protocol.Serialize (serialize)
 
 --------------------------------------------------------------------------------

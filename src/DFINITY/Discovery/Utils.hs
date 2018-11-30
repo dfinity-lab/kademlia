@@ -1,14 +1,14 @@
 --------------------------------------------------------------------------------
 
 -- |
--- Module      : Network.Kademlia.Utils
--- Description : Utility functions and types for @kademlia@
+-- Module:      DFINITY.Discovery.Utils
+-- Description: Utility functions and types for @dfinity-discovery@
 --
 -- FIXME: doc
 
 --------------------------------------------------------------------------------
 
-module Network.Kademlia.Utils
+module DFINITY.Discovery.Utils
   ( threadDelay
   , hour
   , minute
@@ -24,7 +24,7 @@ import qualified Control.Concurrent (threadDelay)
 -- Delay the current thread for the given number of seconds.
 threadDelay :: Int -> IO ()
 threadDelay n
-  | (n < 0)   = error "Network.Kademlia.Utils.threadDelay: negative number!"
+  | (n < 0)   = error "DFINITY.Discovery.Utils.threadDelay: negative number!"
   | otherwise = Control.Concurrent.threadDelay (n * 1000000)
 
 --------------------------------------------------------------------------------

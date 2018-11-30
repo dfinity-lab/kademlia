@@ -5,15 +5,15 @@
 --------------------------------------------------------------------------------
 
 -- |
--- Module      : Network.Kademlia.Types
--- Description : Definitions of a few types
+-- Module:      DFINITY.Discovery.Types
+-- Description: Definitions of a few types
 --
--- "Network.Kademlia.Types" defines a few types that are used throughout the
--- "Network.Kademlia" codebase.
+-- "DFINITY.Discovery.Types" defines a few types that are used throughout the
+-- @dfinity-discovery@ codebase.
 
 --------------------------------------------------------------------------------
 
-module Network.Kademlia.Types
+module DFINITY.Discovery.Types
   ( ByteStruct
   , Command   (..)
   , Node      (..)
@@ -33,23 +33,23 @@ module Network.Kademlia.Types
 
 --------------------------------------------------------------------------------
 
-import           Data.Bits               (setBit, testBit, zeroBits)
-import           Data.Function           (on)
-import           Data.Int                (Int64)
-import           Data.List               (sortBy)
-import           Data.Word               (Word16, Word8)
-import           GHC.Generics            (Generic)
+import           Data.Bits                (setBit, testBit, zeroBits)
+import           Data.Function            (on)
+import           Data.Int                 (Int64)
+import           Data.List                (sortBy)
+import           Data.Word                (Word16, Word8)
+import           GHC.Generics             (Generic)
 import           Network.Socket
                  (PortNumber (..), SockAddr (..), inet_ntoa)
 
-import           Data.ByteString         (ByteString)
-import qualified Data.ByteString         as BS
+import           Data.ByteString          (ByteString)
+import qualified Data.ByteString          as BS
 
-import           Data.Text               (Text)
-import qualified Data.Text               as Text
+import           Data.Text                (Text)
+import qualified Data.Text                as Text
 
-import           Network.Kademlia.Config (WithConfig, getConfig)
-import qualified Network.Kademlia.Config as C
+import           DFINITY.Discovery.Config (WithConfig, getConfig)
+import qualified DFINITY.Discovery.Config as C
 
 --------------------------------------------------------------------------------
 

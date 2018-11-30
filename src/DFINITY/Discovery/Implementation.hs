@@ -6,42 +6,42 @@
 --------------------------------------------------------------------------------
 
 -- |
--- Module      : Network.Kademlia.Implementation
--- Description : The details of the lookup algorithm
+-- Module:      DFINITY.Discovery.Implementation
+-- Description: The details of the lookup algorithm
 --
--- "Network.Kademlia.Implementation" contains the actual implementations of the
+-- "DFINITY.Discovery.Implementation" contains the actual implementations of the
 -- different Kademlia Network Algorithms.
 
 --------------------------------------------------------------------------------
 
-module Network.Kademlia.Implementation
+module DFINITY.Discovery.Implementation
   ( lookup
   , store
   , joinNetwork
   , JoinResult (..)
-  , Network.Kademlia.Implementation.lookupNode
+  , lookupNode
   ) where
 
 --------------------------------------------------------------------------------
 
-import           Control.Concurrent.Chan     (Chan, newChan, readChan)
-import           Control.Concurrent.STM      (atomically, readTVar)
-import           Control.Monad               (forM_, when)
-import           Control.Monad.Extra         (unlessM)
-import           Control.Monad.IO.Class      (MonadIO (..))
-import           Control.Monad.Trans.State   (StateT, evalStateT, gets, modify)
-import           Data.List                   (delete, find)
-import qualified Data.Map                    as M
-import           Data.Word                   (Word8)
+import           Control.Concurrent.Chan      (Chan, newChan, readChan)
+import           Control.Concurrent.STM       (atomically, readTVar)
+import           Control.Monad                (forM_, when)
+import           Control.Monad.Extra          (unlessM)
+import           Control.Monad.IO.Class       (MonadIO (..))
+import           Control.Monad.Trans.State    (StateT, evalStateT, gets, modify)
+import           Data.List                    (delete, find)
+import qualified Data.Map                     as M
+import           Data.Word                    (Word8)
 
-import           Network.Kademlia.Config     (KademliaConfig (..), usingConfig)
-import           Network.Kademlia.Instance
+import           DFINITY.Discovery.Config     (KademliaConfig (..), usingConfig)
+import           DFINITY.Discovery.Instance
                  (KademliaInstance (..), KademliaState (..), insertNode,
                  isNodeBanned)
-import           Network.Kademlia.Networking (expect, send)
-import           Network.Kademlia.ReplyQueue
-import qualified Network.Kademlia.Tree       as T
-import           Network.Kademlia.Types
+import           DFINITY.Discovery.Networking (expect, send)
+import           DFINITY.Discovery.ReplyQueue
+import qualified DFINITY.Discovery.Tree       as T
+import           DFINITY.Discovery.Types
                  (Command (..), Node (..), Peer, Serialize (..), Signal (..),
                  sortByDistanceTo)
 

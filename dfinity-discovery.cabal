@@ -1,7 +1,7 @@
-name:                kademlia
+name:                dfinity-discovery
 version:             1.0.0
-homepage:            https://github.com/dfinity-lab/kademlia
-bug-reports:         https://github.com/dfinity-lab/kademlia/issues
+homepage:            https://github.com/dfinity-lab/dfinity-discovery
+bug-reports:         https://github.com/dfinity-lab/dfinity-discovery/issues
 synopsis:            An implementation of the Kademlia DHT Protocol
 description:
     .
@@ -30,22 +30,22 @@ cabal-version:       >=1.10
 
 source-repository head
     type:       git
-    location:   https://github.com/dfinity-lab/kademlia.git
+    location:   https://github.com/dfinity-lab/dfinity-discovery.git
 
 library
-  exposed-modules:     Network.Kademlia
-                       Network.Kademlia.Config
-                       Network.Kademlia.Implementation
-                       Network.Kademlia.Instance
-                       Network.Kademlia.Process
-                       Network.Kademlia.Networking
-                       Network.Kademlia.Protocol
-                       Network.Kademlia.Protocol.Parse
-                       Network.Kademlia.Protocol.Serialize
-                       Network.Kademlia.ReplyQueue
-                       Network.Kademlia.Tree
-                       Network.Kademlia.Types
-                       Network.Kademlia.Utils
+  exposed-modules:     DFINITY.Discovery
+                       DFINITY.Discovery.Config
+                       DFINITY.Discovery.Implementation
+                       DFINITY.Discovery.Instance
+                       DFINITY.Discovery.Process
+                       DFINITY.Discovery.Networking
+                       DFINITY.Discovery.Protocol
+                       DFINITY.Discovery.Protocol.Parse
+                       DFINITY.Discovery.Protocol.Serialize
+                       DFINITY.Discovery.ReplyQueue
+                       DFINITY.Discovery.Tree
+                       DFINITY.Discovery.Types
+                       DFINITY.Discovery.Utils
 
   build-depends:       base                 >= 4.7 && < 5
                      , bytestring           >= 0.10.2 && < 0.11
@@ -80,7 +80,7 @@ test-suite library-test
                      , Tests.Instance
                      , Tests.ReplyQueue
                      , Tests.Implementation
-  build-depends:       kademlia
+  build-depends:       dfinity-discovery
                      , base                 >= 4.7 && < 5
                      , binary               >= 0.8.3
                      , bytestring           >= 0.10.2 && < 0.11
@@ -110,7 +110,7 @@ test-suite library-test
 executable discovery
   hs-source-dirs:      examples
   main-is:             Discovery.hs
-  build-depends:       kademlia
+  build-depends:       dfinity-discovery
                      , base                 >= 4.7 && < 5
                      , binary               >= 0.8.3
                      , bytestring           >= 0.10.2 && < 0.11

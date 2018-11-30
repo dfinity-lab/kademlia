@@ -1,35 +1,43 @@
-{-|
-Module      : Tests.Networking
-Description : Tests for Network.Kademlia.Networking
-
-Tests specific to Network.Kademlia.Networking.
--}
+--------------------------------------------------------------------------------
 
 {-# LANGUAGE OverloadedStrings #-}
 
+--------------------------------------------------------------------------------
+
+-- |
+-- Module:      Tests.Networking
+-- Description: Tests for DFINITY.Discovery.Networking
+--
+-- Tests specific to "DFINITY.Discovery.Networking".
+
+--------------------------------------------------------------------------------
+
 module Tests.Networking
-       ( expectCheck
-       , sendCheck
-       ) where
+  ( expectCheck
+  , sendCheck
+  ) where
 
+--------------------------------------------------------------------------------
 
-import           Control.Concurrent.Chan     (Chan, newChan, readChan)
-import           Data.Maybe                  (isJust)
-import           Test.QuickCheck             (Gen, Property, arbitrary)
+import           Control.Concurrent.Chan      (Chan, newChan, readChan)
+import           Data.Maybe                   (isJust)
+import           Test.QuickCheck              (Gen, Property, arbitrary)
 import           Test.QuickCheck.Monadic
                  (PropertyM, assert, monadicIO, pick, pre, run)
 
-import           Network.Kademlia.Networking
+import           DFINITY.Discovery.Networking
                  (KademliaHandle (..), closeK, expect, openOn, send,
                  startRecvProcess)
-import           Network.Kademlia.ReplyQueue
+import           DFINITY.Discovery.ReplyQueue
                  (Reply (..), ReplyQueue (..),
                  ReplyRegistration (ReplyRegistration), ReplyType (..),
                  dispatch, emptyReplyQueue)
-import           Network.Kademlia.Types
+import           DFINITY.Discovery.Types
                  (Command (..), Node (..), Peer (..), Signal (..))
 
-import           Tests.TestTypes             (IdType (..))
+import           Tests.TestTypes              (IdType (..))
+
+--------------------------------------------------------------------------------
 
 valueSet :: (Monad m) => PropertyM m (Peer, Peer, IdType, IdType)
 valueSet = do
@@ -103,3 +111,5 @@ rType :: Command i a -> Maybe (ReplyType i)
 rType  PONG                  = Just  R_PONG
 rType (RETURN_NODES _ nid _) = Just (R_RETURN_NODES nid)
 rType _                      = Nothing
+
+--------------------------------------------------------------------------------

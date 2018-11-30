@@ -11,9 +11,9 @@ import           Data.Binary
 import qualified Data.ByteString           as B
 import qualified Data.ByteString.Char8     as C
 import           Data.ByteString.Lazy      (fromStrict, toStrict)
+import qualified DFINITY.Discovery         as K
 import           GHC.Conc                  (threadDelay)
 import           Network                   (PortNumber)
-import qualified Network.Kademlia          as K
 import           System.Environment        (getArgs)
 import           System.Random             (mkStdGen)
 import           System.Random.Shuffle     (shuffleM)

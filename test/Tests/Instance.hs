@@ -1,31 +1,37 @@
-{-|
-Module      : Tests.Instance
-Description : Tests for Network.Kademlia.Instance
-
-Tests specific to Network.Kademlia.Instance.
--}
+--------------------------------------------------------------------------------
 
 {-# LANGUAGE OverloadedStrings #-}
 
+--------------------------------------------------------------------------------
+
+-- |
+-- Module:      Tests.Instance
+-- Description: Tests for DFINITY.Discovery.Instance
+--
+-- Tests specific to "DFINITY.Discovery.Instance".
+
+--------------------------------------------------------------------------------
+
 module Tests.Instance
-       ( handlesPingCheck
-       , trackingKnownPeersCheck
-       , isNodeBannedCheck
-       , banNodeCheck
-       , snapshotCheck
-       ) where
+  ( handlesPingCheck
+  , trackingKnownPeersCheck
+  , isNodeBannedCheck
+  , banNodeCheck
+  , snapshotCheck
+  ) where
 
+--------------------------------------------------------------------------------
 
-import           Control.Concurrent          (forkIO, threadDelay)
-import           Control.Concurrent.Chan     (readChan, writeChan)
-import           Control.Monad               (liftM2, void)
-import           Data.Binary                 (decode, encode)
-import qualified Data.ByteString.Char8       as C
-import           Data.Function               (on)
-import qualified Data.Map                    as M
-import           Data.Maybe                  (fromJust, isJust)
+import           Control.Concurrent           (forkIO, threadDelay)
+import           Control.Concurrent.Chan      (readChan, writeChan)
+import           Control.Monad                (liftM2, void)
+import           Data.Binary                  (decode, encode)
+import qualified Data.ByteString.Char8        as C
+import           Data.Function                (on)
+import qualified Data.Map                     as M
+import           Data.Maybe                   (fromJust, isJust)
 
-import           Data.List                   (sort)
+import           Data.List                    (sort)
 import           Test.HUnit
                  (Assertion, assertEqual, assertFailure)
 import           Test.QuickCheck
@@ -33,21 +39,23 @@ import           Test.QuickCheck
 import           Test.QuickCheck.Monadic
                  (PropertyM, assert, monadicIO, monitor, pick, run)
 
-import           Network.Kademlia            (close, create)
-import           Network.Kademlia.Instance
+import           DFINITY.Discovery            (close, create)
+import           DFINITY.Discovery.Instance
                  (BanState (..), KademliaInstance (..), KademliaSnapshot (..),
                  banNode, dumpPeers, isNodeBanned, lookupNode)
-import           Network.Kademlia.Networking
+import           DFINITY.Discovery.Networking
                  (KademliaHandle (..), closeK, openOn, send, startRecvProcess)
-import           Network.Kademlia.ReplyQueue
+import           DFINITY.Discovery.ReplyQueue
                  (Reply (..), ReplyQueue (..), emptyReplyQueue)
-import qualified Network.Kademlia.Tree       as T
-import           Network.Kademlia.Types
+import qualified DFINITY.Discovery.Tree       as T
+import           DFINITY.Discovery.Types
                  (Command (..), Node (..), Peer (..), Serialize (..),
                  Signal (..), Timestamp)
 
-import           Tests.TestTypes             (IdType (..), NodeBunch (..))
-import           Tests.Tree                  (withTree)
+import           Tests.TestTypes              (IdType (..), NodeBunch (..))
+import           Tests.Tree                   (withTree)
+
+--------------------------------------------------------------------------------
 
 -- | The default set of peers
 peers :: (Peer, Peer)
@@ -59,7 +67,7 @@ peers = let pA = Peer "127.0.0.1" 1122
 ids :: (Monad m) => PropertyM m (IdType, IdType)
 ids = liftM2 (,) (pick arbitrary) (pick arbitrary)
 
--- | Checks wether PINGs are handled appropriately
+-- | Checks whether PINGs are handled appropriately
 handlesPingCheck :: Assertion
 handlesPingCheck = do
     let (_, pB) = peers
@@ -191,3 +199,5 @@ snapshotCheck = withTree $ \tree nodes -> pure $ \bans ->
         in  conjoin [ ((===) `on` snapshotBanned)                 sp sp'
                     , ((===) `on` sort . T.toList . snapshotTree) sp sp'
                     ]
+
+--------------------------------------------------------------------------------

@@ -6,14 +6,14 @@
 --------------------------------------------------------------------------------
 
 -- |
--- Module      : Network.Kademlia.Instance
--- Description : Implementation of the 'KademliaInstance' type
+-- Module:      DFINITY.Discovery.Instance
+-- Description: Implementation of the 'KademliaInstance' type
 --
--- "Network.Kademlia.Instance" implements the 'KademliaInstance' type.
+-- "DFINITY.Discovery.Instance" implements the 'KademliaInstance' type.
 
 --------------------------------------------------------------------------------
 
-module Network.Kademlia.Instance
+module DFINITY.Discovery.Instance
   ( KademliaInstance (..)
   , KademliaState (..)
   , BanState (..)
@@ -38,24 +38,24 @@ module Network.Kademlia.Instance
 
 --------------------------------------------------------------------------------
 
-import           Control.Arrow               (second)
-import           Control.Concurrent          (ThreadId)
-import qualified Control.Concurrent.STM      as STM
-import           Control.Monad               (unless)
-import           Data.Time.Clock.POSIX       (POSIXTime, getPOSIXTime)
-import           Data.Word                   (Word16)
-import           GHC.Generics                (Generic)
+import           Control.Arrow                (second)
+import           Control.Concurrent           (ThreadId)
+import qualified Control.Concurrent.STM       as STM
+import           Control.Monad                (unless)
+import           Data.Time.Clock.POSIX        (POSIXTime, getPOSIXTime)
+import           Data.Word                    (Word16)
+import           GHC.Generics                 (Generic)
 
-import           Data.Map.Lazy               (Map)
-import qualified Data.Map.Lazy               as Map
+import           Data.Map.Lazy                (Map)
+import qualified Data.Map.Lazy                as Map
 
-import           Data.Text                   (Text)
+import           Data.Text                    (Text)
 
-import           Network.Kademlia.Config
+import           DFINITY.Discovery.Config
                  (KademliaConfig, defaultConfig, usingConfig)
-import           Network.Kademlia.Networking (KademliaHandle)
-import qualified Network.Kademlia.Tree       as T
-import           Network.Kademlia.Types
+import           DFINITY.Discovery.Networking (KademliaHandle)
+import qualified DFINITY.Discovery.Tree       as T
+import           DFINITY.Discovery.Types
                  (Node (Node, nodePeer), Peer (Peer), Serialize, Timestamp)
 
 --------------------------------------------------------------------------------

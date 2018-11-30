@@ -5,10 +5,10 @@
 --------------------------------------------------------------------------------
 
 -- |
--- Module      : Tests.Implementation
--- Description : Tests for Network.Kademlia.Implementation
+-- Module:      Tests.Implementation
+-- Description: Tests for DFINITY.Discovery.Implementation
 --
--- Tests specific to "Network.Kademlia.Implementation".
+-- Tests specific to "DFINITY.Discovery.Implementation".
 
 --------------------------------------------------------------------------------
 
@@ -23,22 +23,22 @@ module Tests.Implementation
 
 --------------------------------------------------------------------------------
 
-import           Control.Concurrent.STM    (atomically, readTVar)
-import           Control.Monad             (forM, forM_, mapM, zipWithM)
-import qualified Data.ByteString.Char8     as BSC8
+import           Control.Concurrent.STM     (atomically, readTVar)
+import           Control.Monad              (forM, forM_, mapM, zipWithM)
+import qualified Data.ByteString.Char8      as BSC8
 
-import           Test.HUnit                (Assertion, assertEqual)
-import           Test.QuickCheck           (Property)
-import           Test.QuickCheck.Monadic   (PropertyM, assert, monadicIO, run)
+import           Test.HUnit                 (Assertion, assertEqual)
+import           Test.QuickCheck            (Property)
+import           Test.QuickCheck.Monadic    (PropertyM, assert, monadicIO, run)
 
-import qualified Network.Kademlia          as K
-import           Network.Kademlia.Config   (defaultK, defaultRoutingSharingN)
-import           Network.Kademlia.Instance
+import qualified DFINITY.Discovery          as K
+import           DFINITY.Discovery.Config   (defaultK, defaultRoutingSharingN)
+import           DFINITY.Discovery.Instance
                  (BanState (..), KademliaInstance (..), KademliaState (..))
-import qualified Network.Kademlia.Tree     as T
-import           Network.Kademlia.Types    (Node (..), Peer (..))
+import qualified DFINITY.Discovery.Tree     as T
+import           DFINITY.Discovery.Types    (Node (..), Peer (..))
 
-import           Tests.TestTypes           (IdBunch (..), IdType (..))
+import           Tests.TestTypes            (IdBunch (..), IdType (..))
 
 --------------------------------------------------------------------------------
 

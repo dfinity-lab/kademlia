@@ -1,25 +1,32 @@
-{-|
-Module      : Types
-Description : Tests for Network.Kademlia.Types
+--------------------------------------------------------------------------------
 
-Tests specific to Network.Kademlia.Types.
--}
+-- |
+-- Module:      Tests.Types
+-- Description: Tests for DFINITY.Discovery.Types
+--
+-- Tests specific to "DFINITY.Discovery.Types".
+
+--------------------------------------------------------------------------------
 
 module Tests.Types
        ( fromByteStructCheck
        , toByteStructCheck
        ) where
 
-import           Data.Bits               (testBit)
-import qualified Data.ByteString         as B
-import           Test.QuickCheck         ()
+--------------------------------------------------------------------------------
 
-import           Network.Kademlia.Config (defaultConfig, usingConfig)
-import           Network.Kademlia.Types  (fromByteStruct, toBS, toByteStruct)
+import           Data.Bits                (testBit)
+import qualified Data.ByteString          as B
+import           Test.QuickCheck          ()
 
-import           Tests.TestTypes         (IdType)
+import           DFINITY.Discovery.Config (defaultConfig, usingConfig)
+import           DFINITY.Discovery.Types  (fromByteStruct, toBS, toByteStruct)
 
--- | Checks wether toByteStruct converts corretctly
+import           Tests.TestTypes          (IdType)
+
+--------------------------------------------------------------------------------
+
+-- | Checks whether toByteStruct converts correctly
 toByteStructCheck :: IdType -> Bool
 toByteStructCheck nid = foldl foldingFunc True [0..length converted - 1]
     where converted = toByteStruct nid `usingConfig` defaultConfig
@@ -27,6 +34,8 @@ toByteStructCheck nid = foldl foldingFunc True [0..length converted - 1]
           foldingFunc b i = b && (converted !! i == access byteWords i)
           access ws i = testBit (ws !! (i `div` 8)) (i `mod` 8)
 
--- | Checks wether fromByteStruct converts corretctly
+-- | Checks whether fromByteStruct converts correctly
 fromByteStructCheck :: IdType -> Bool
 fromByteStructCheck nid = nid == (fromByteStruct =<< toByteStruct nid) `usingConfig` defaultConfig
+
+--------------------------------------------------------------------------------
