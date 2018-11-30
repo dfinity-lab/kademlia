@@ -1,14 +1,14 @@
 --------------------------------------------------------------------------------
 
 -- |
--- Module      : Network.Kademlia
--- Description : Implementation of the Kademlia DHT
--- License:      BSD3
--- Maintainer:   fro_ozen@gmx.de
--- Stability:    experimental
--- Portability:  GHC
+-- Module:      DFINITY.Discovery
+-- Description: Implementation of the Kademlia DHT
+-- License:     BSD3
+-- Maintainer:  team@dfinity.org
+-- Stability:   experimental
+-- Portability: GHC
 --
--- A haskell implementation of the Kademlia distributed hashtable, an efficient
+-- A Haskell implementation of the Kademlia distributed hashtable, an efficient
 -- way to store and lookup values distributed over a P2P network.
 --
 -- The implementation is based on the paper by Petar Maymounkov and David Mazières:
@@ -24,7 +24,7 @@
 -- To get started with this library, first import it. The import has to be
 -- qualified, as the module uses the same function names as some other modules.
 --
--- > import qualified Network.Kademlia as K
+-- > import qualified DFINITY.Discovery as K
 --
 -- Next, you need to decide on the types you want to use as the values to be stored
 -- in the DHT and the keys to acces them by. As soon as you've decided on them, you
@@ -116,7 +116,7 @@
 
 --------------------------------------------------------------------------------
 
-module Network.Kademlia
+module DFINITY.Discovery
   ( KademliaInstance
   , instanceNode
   , KademliaConfig (..)
@@ -148,19 +148,19 @@ module Network.Kademlia
 
 --------------------------------------------------------------------------------
 
-import           Data.Word                       (Word16)
+import           Data.Word                        (Word16)
 
-import           Data.Text                       (Text)
-import qualified Data.Text                       as Text
+import           Data.Text                        (Text)
+import qualified Data.Text                        as Text
 
-import           Network.Kademlia.Config
-import           Network.Kademlia.Implementation as I
-import           Network.Kademlia.Instance
-import           Network.Kademlia.Networking
-import           Network.Kademlia.Process        (start)
-import           Network.Kademlia.ReplyQueue
-import qualified Network.Kademlia.Tree           as T
-import           Network.Kademlia.Types
+import           DFINITY.Discovery.Config
+import           DFINITY.Discovery.Implementation as I
+import           DFINITY.Discovery.Instance
+import           DFINITY.Discovery.Networking
+import           DFINITY.Discovery.Process        (start)
+import           DFINITY.Discovery.ReplyQueue
+import qualified DFINITY.Discovery.Tree           as T
+import           DFINITY.Discovery.Types
 
 --------------------------------------------------------------------------------
 

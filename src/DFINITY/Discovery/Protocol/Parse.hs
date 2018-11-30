@@ -1,18 +1,18 @@
 --------------------------------------------------------------------------------
 
 -- |
--- Module      : Network.Kademlia.Protocol.Parse
--- Description : Implementation of the protocol parsing
+-- Module:      DFINITY.Discovery.Protocol.Parse
+-- Description: Implementation of the protocol parsing
 --
--- "Network.Kademlia.Protocol.Parsing" implements the actual parsing
+-- "DFINITY.Discovery.Protocol.Parsing" implements the actual parsing
 -- of 'Command's.
 --
--- It made sense to split it off of "Network.Kademlia.Protocol" as it made both
+-- It made sense to split it off of "DFINITY.Discovery.Protocol" as it made both
 -- cleaner and more readable.
 
 --------------------------------------------------------------------------------
 
-module Network.Kademlia.Protocol.Parse
+module DFINITY.Discovery.Protocol.Parse
   ( parse
   , parseSerialize
   , parseSignal
@@ -38,7 +38,7 @@ import           Data.Text                  (Text)
 import qualified Data.Text                  as Text
 import qualified Data.Text.Encoding         as Text
 
-import           Network.Kademlia.Types
+import           DFINITY.Discovery.Types
                  (Command (FIND_NODE, PING, PONG, RETURN_NODES), Node (Node),
                  Peer (Peer), Serialize (fromBS), Signal (Signal))
 

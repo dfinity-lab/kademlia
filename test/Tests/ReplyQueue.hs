@@ -1,32 +1,38 @@
-{-|
-Module      : Tests.ReplyQueue
-Description : Tests for Network.Kademlia.ReplyQueue
+--------------------------------------------------------------------------------
 
-Tests specific to Network.Kademlia.ReplyQueue
--}
+-- |
+-- Module:      Tests.ReplyQueue
+-- Description: Tests for DFINITY.Discovery.ReplyQueue
+--
+-- Tests specific to "DFINITY.Discovery.ReplyQueue".
+
+--------------------------------------------------------------------------------
 
 module Tests.ReplyQueue
-       ( removedCheck
-       , repliesCheck
-       ) where
+  ( removedCheck
+  , repliesCheck
+  ) where
 
+--------------------------------------------------------------------------------
 
-import           Control.Concurrent.Chan     (Chan, getChanContents, newChan)
-import           Control.Concurrent.STM      (atomically, readTVar)
-import           Data.Maybe                  (isJust)
+import           Control.Concurrent.Chan      (Chan, getChanContents, newChan)
+import           Control.Concurrent.STM       (atomically, readTVar)
+import           Data.Maybe                   (isJust)
 
-import           Test.QuickCheck             (Property)
-import           Test.QuickCheck.Monadic     (assert, monadicIO, pre, run)
+import           Test.QuickCheck              (Property)
+import           Test.QuickCheck.Monadic      (assert, monadicIO, pre, run)
 
-import           Network.Kademlia.ReplyQueue
+import           DFINITY.Discovery.ReplyQueue
                  (Reply (..), ReplyRegistration (..), ReplyType (..), dispatch,
                  emptyReplyQueue, register, replyQueueQueue)
-import           Network.Kademlia.Types
+import           DFINITY.Discovery.Types
                  (Command (..), Node (..), Signal (..))
 
-import           Tests.TestTypes             (IdType (..))
+import           Tests.TestTypes              (IdType (..))
 
--- | Check wether registered reply handlers a used
+--------------------------------------------------------------------------------
+
+-- | Check whether registered reply handlers a used
 repliesCheck :: Signal IdType String -> Signal IdType String -> Property
 repliesCheck sig1 sig2 = monadicIO $ do
     let reg1 = toRegistration sig1
@@ -64,7 +70,7 @@ repliesCheck sig1 sig2 = monadicIO $ do
     assert $ unwrapped1 == sig1
     assert $ unwrapped2 == sig2
 
--- | Check wether registered reply handlers are removed after usage
+-- | Check whether registered reply handlers are removed after usage
 removedCheck :: Signal IdType String -> Property
 removedCheck sig = monadicIO $ do
     let reg = toRegistration sig
@@ -91,3 +97,5 @@ toRegistration sig = case rType (signalCommand sig) of
           rType  PONG                  = Just  R_PONG
           rType (RETURN_NODES _ nid _) = Just (R_RETURN_NODES nid)
           rType _                      = Nothing
+
+--------------------------------------------------------------------------------

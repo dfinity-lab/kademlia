@@ -1,26 +1,33 @@
-{-|
-Module      : Tests.Protocol
-Description : Test for Network.Kademlia.Protocol
+--------------------------------------------------------------------------------
 
-Tests specific to Network.Kademlia.Protocol.
--}
+-- |
+-- Module:      Tests.Protocol
+-- Description: Test for DFINITY.Discovery.Protocol
+--
+-- Tests specific to "DFINITY.Discovery.Protocol".
+
+--------------------------------------------------------------------------------
 
 module Tests.Protocol
-       ( parseCheck
-       , lengthCheck
-       ) where
+  ( parseCheck
+  , lengthCheck
+  ) where
 
-import           Control.Arrow             (left, (>>>))
+--------------------------------------------------------------------------------
 
-import qualified Data.ByteString           as B
+import           Control.Arrow              (left, (>>>))
+
+import qualified Data.ByteString            as B
 import           Test.QuickCheck
                  (Property, conjoin, counterexample, (===), (==>))
 
-import           Network.Kademlia.Protocol (parse, serialize)
-import           Network.Kademlia.Types
+import           DFINITY.Discovery.Protocol (parse, serialize)
+import           DFINITY.Discovery.Types
                  (Command (..), Node (..), Signal (..))
 
-import           Tests.TestTypes           (IdType (..))
+import           Tests.TestTypes            (IdType (..))
+
+--------------------------------------------------------------------------------
 
 -- | A signal is the same as its serialized form parsed
 parseCheck :: Signal IdType String -> Property
@@ -48,3 +55,5 @@ lengthCheck s =
     partLen = 100
     isReturnNodes (RETURN_NODES _ _ _) = True
     isReturnNodes _                    = False
+
+--------------------------------------------------------------------------------

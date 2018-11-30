@@ -1,42 +1,48 @@
-{-|
-Module      : Tree
-Description : Tests for Network.Kademlia.Tree
+--------------------------------------------------------------------------------
 
-Tests specific to Network.Kademlia.Tree.
--}
+-- |
+-- Module:      Tests.Tree
+-- Description: Tests for DFINITY.Discovery.Tree
+--
+-- Tests specific to "DFINITY.Discovery.Tree".
+
+--------------------------------------------------------------------------------
 
 module Tests.Tree
-       ( withTree
-       , bucketSizeCheck
-       , deleteCheck
-       , findClosestCheck
-       , insertCheck
-       , lookupCheck
-       , pickupNotClosestDifferentCheck
-       , refreshCheck
-       , splitCheck
-       , viewCheck
-       ) where
+  ( withTree
+  , bucketSizeCheck
+  , deleteCheck
+  , findClosestCheck
+  , insertCheck
+  , lookupCheck
+  , pickupNotClosestDifferentCheck
+  , refreshCheck
+  , splitCheck
+  , viewCheck
+  ) where
 
+--------------------------------------------------------------------------------
 
-import           Control.Monad           (filterM, forM, join)
-import           Data.Foldable           (foldrM)
-import           Data.Function           (on)
-import           Data.List               (sort, sortBy)
-import           Data.Maybe              (isJust)
-import           Data.Ord                (comparing)
-import qualified Data.Set                as S
-import           System.Random           (mkStdGen)
+import           Control.Monad            (filterM, forM, join)
+import           Data.Foldable            (foldrM)
+import           Data.Function            (on)
+import           Data.List                (sort, sortBy)
+import           Data.Maybe               (isJust)
+import           Data.Ord                 (comparing)
+import qualified Data.Set                 as S
+import           System.Random            (mkStdGen)
 import           Test.QuickCheck
                  (Property, conjoin, counterexample, property)
 
-import           Network.Kademlia.Config
+import           DFINITY.Discovery.Config
                  (WithConfig, configK, defaultConfig, usingConfig)
-import qualified Network.Kademlia.Tree   as T
-import           Network.Kademlia.Types
+import qualified DFINITY.Discovery.Tree   as T
+import           DFINITY.Discovery.Types
                  (Node (..), Serialize (..), Timestamp, distance)
 
-import           Tests.TestTypes         (IdType (..), NodeBunch (..))
+import           Tests.TestTypes          (IdType (..), NodeBunch (..))
+
+--------------------------------------------------------------------------------
 
 usingDefaultConfig :: WithConfig a -> a
 usingDefaultConfig = flip usingConfig defaultConfig
@@ -45,7 +51,7 @@ usingDefaultConfig = flip usingConfig defaultConfig
 lookupCheck :: (Serialize i, Eq i) => T.NodeTree i -> Node i -> Bool
 lookupCheck tree node = usingDefaultConfig (T.lookup tree (nodeId node)) == Just node
 
--- | Check wether an inserted Node is retrievable
+-- | Check whether an inserted Node is retrievable
 insertCheck :: IdType -> Node IdType -> Bool
 insertCheck nid node = usingDefaultConfig $ do
     let timestamp = 0 :: Timestamp
@@ -144,3 +150,5 @@ viewCheck = withTree $ \tree nodes -> do
   where
     increases x  = x == sort x
     sameElements = (==) `on` S.fromList
+
+--------------------------------------------------------------------------------

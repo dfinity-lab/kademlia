@@ -6,15 +6,15 @@
 --------------------------------------------------------------------------------
 
 -- |
--- Module      : Network.Kademlia.Protocol.Serialize
--- Description : Implementation of the protocol serialization
+-- Module:      DFINITY.Discovery.Protocol.Serialize
+-- Description: Implementation of the protocol serialization
 --
--- "Network.Kademlia.Protocol.Serialize" implements the actual serialization of
+-- "DFINITY.Discovery.Protocol.Serialize" implements the actual serialization of
 -- 'Command's.
 
 --------------------------------------------------------------------------------
 
-module Network.Kademlia.Protocol.Serialize
+module DFINITY.Discovery.Protocol.Serialize
   ( serialize
   ) where
 
@@ -32,7 +32,7 @@ import qualified Data.ByteString.Lazy    as LBS
 
 import qualified Data.Text.Encoding      as Text
 
-import           Network.Kademlia.Types
+import           DFINITY.Discovery.Types
                  (Command (..), Node (..), Serialize (..), peerHost, peerPort)
 
 --------------------------------------------------------------------------------

@@ -6,47 +6,47 @@
 --------------------------------------------------------------------------------
 
 -- |
--- Network.Kademlia.Process implements all the things that need
+-- "DFINITY.Discovery.Process" implements all the things that need
 -- to happen in the background to get a working Kademlia instance.
 
 --------------------------------------------------------------------------------
 
-module Network.Kademlia.Process
+module DFINITY.Discovery.Process
   ( start
   ) where
 
 --------------------------------------------------------------------------------
 
-import           Control.Concurrent          (ThreadId, forkIO, killThread)
-import           Control.Concurrent.Chan     (Chan, readChan)
-import           Control.Concurrent.STM      (atomically, readTVar, writeTVar)
-import           Control.Exception           (catch)
-import           Control.Monad               (forM_, forever, when)
-import           Control.Monad.Extra         (unlessM)
-import           Control.Monad.IO.Class      (liftIO)
-import           Data.Map.Strict             (Map)
-import qualified Data.Map.Strict             as Map
-import           Data.Maybe                  (isNothing)
-import           Data.Time.Clock.POSIX       (getPOSIXTime)
-import           System.Random               (newStdGen)
+import           Control.Concurrent           (ThreadId, forkIO, killThread)
+import           Control.Concurrent.Chan      (Chan, readChan)
+import           Control.Concurrent.STM       (atomically, readTVar, writeTVar)
+import           Control.Exception            (catch)
+import           Control.Monad                (forM_, forever, when)
+import           Control.Monad.Extra          (unlessM)
+import           Control.Monad.IO.Class       (liftIO)
+import           Data.Map.Strict              (Map)
+import qualified Data.Map.Strict              as Map
+import           Data.Maybe                   (isNothing)
+import           Data.Time.Clock.POSIX        (getPOSIXTime)
+import           System.Random                (newStdGen)
 
-import           Network.Kademlia.Config     (KademliaConfig (..), usingConfig)
-import           Network.Kademlia.Instance
+import           DFINITY.Discovery.Config     (KademliaConfig (..), usingConfig)
+import           DFINITY.Discovery.Instance
                  (KademliaInstance (..), KademliaState (..), deleteValue,
                  insertNode, insertValue, isNodeBanned, lookupNodeByPeer,
                  lookupValue)
-import           Network.Kademlia.Networking
+import           DFINITY.Discovery.Networking
                  (KademliaHandle (..), expect, handleLogError', send,
                  startRecvProcess)
-import           Network.Kademlia.ReplyQueue
+import           DFINITY.Discovery.ReplyQueue
                  (Reply (..), ReplyQueue, ReplyRegistration (..),
                  ReplyType (..), dispatch, expectedReply,
                  replyQueueDispatchChan, replyQueueRequestChan)
-import qualified Network.Kademlia.Tree       as T
-import           Network.Kademlia.Types
+import qualified DFINITY.Discovery.Tree       as T
+import           DFINITY.Discovery.Types
                  (Command (..), Node (..), Peer (..), Serialize (..),
                  Signal (..), sortByDistanceTo)
-import           Network.Kademlia.Utils      (threadDelay)
+import           DFINITY.Discovery.Utils      (threadDelay)
 
 --------------------------------------------------------------------------------
 

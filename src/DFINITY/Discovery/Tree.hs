@@ -10,17 +10,17 @@
 --------------------------------------------------------------------------------
 
 -- |
--- Module      : Network.Kademlia.Tree
--- Description : Implementation of the Node Storage Tree
+-- Module:      DFINITY.Discovery.Tree
+-- Description: Implementation of the Node Storage Tree
 --
--- "Network.Kademlia.Tree" implements the /node storage tree/ used to store
+-- "DFINITY.Discovery.Tree" implements the /node storage tree/ used to store
 -- and look up the known nodes.
 --
 -- This module is designed to be used as a qualified import.
 
 --------------------------------------------------------------------------------
 
-module Network.Kademlia.Tree
+module DFINITY.Discovery.Tree
   ( NodeTree (..)
   , NodeTreeElem (..)
   , PingInfo (..)
@@ -41,23 +41,23 @@ module Network.Kademlia.Tree
 
 --------------------------------------------------------------------------------
 
-import           Prelude                 hiding (lookup)
+import           Prelude                  hiding (lookup)
 
-import           Control.Arrow           (second)
-import           Control.Monad.Random    (evalRand)
-import           Data.Function           ((&))
-import           GHC.Generics            (Generic)
-import           System.Random           (StdGen)
-import           System.Random.Shuffle   (shuffleM)
+import           Control.Arrow            (second)
+import           Control.Monad.Random     (evalRand)
+import           Data.Function            ((&))
+import           GHC.Generics             (Generic)
+import           System.Random            (StdGen)
+import           System.Random.Shuffle    (shuffleM)
 
-import qualified Data.List               as List
+import qualified Data.List                as List
 
-import           Data.Map.Lazy           (Map)
-import qualified Data.Map.Lazy           as Map
+import           Data.Map.Lazy            (Map)
+import qualified Data.Map.Lazy            as Map
 
-import           Network.Kademlia.Config
+import           DFINITY.Discovery.Config
                  (KademliaConfig (..), WithConfig, getConfig)
-import           Network.Kademlia.Types
+import           DFINITY.Discovery.Types
                  (ByteStruct, Node (..), Peer, Serialize (..), Timestamp,
                  fromByteStruct, sortByDistanceTo, toByteStruct)
 
