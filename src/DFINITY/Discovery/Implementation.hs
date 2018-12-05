@@ -182,18 +182,18 @@ joinNetwork inst initPeer
     -- Retrieve your own id
     ownId = do
       tree <- atomically (readTVar (stateTree (instanceState inst)))
-      pure (T.extractId tree `usingConfig` instanceConfig inst)
+      pure (T.extractId tree)
 
     -- Also insert all returned nodes to our bucket (see [CSL-258])
     checkSignal (Signal _ (RETURN_NODES _ _ nodes)) = do
       -- Check whether the own id was encountered. If so, return a IDClash
       -- error, otherwise, continue the lookup.
       -- Commented out due to possibility of bug (like when node reconnects)
-      -- tId <- gets lookupStateTargetId
-      -- case find (\retNode -> nodeId retNode == tId) nodes of
-      --     Just _ -> return IDClash
-      --     _      -> continueLookup nodes sendS continue finish
-      continueLookup nodes sendS continue finish
+      tId <- gets lookupStateTargetId
+      case find (\retNode -> nodeId retNode == tId) nodes of
+          Just _ -> return IDClash
+          _      -> continueLookup nodes sendS continue finish
+      -- continueLookup nodes sendS continue finish
 
     checkSignal _ = error "Unknow signal for @joinNetwork@"
 
@@ -433,7 +433,7 @@ continueLookup nodes signalAction continue end = do
         -- Return the k closest nodes, the lookup had contact with
         pure (take
               (configK cfg)
-              (sortByDistanceTo (known ++ polled) cid `usingConfig` cfg))
+              (sortByDistanceTo (known ++ polled) cid))
 
   let allClosestPolled
         :: (Eq i, Serialize i)
@@ -455,7 +455,7 @@ continueLookup nodes signalAction continue end = do
 
   -- Pick the k closest known nodes, that haven't been polled yet
   let newKnown = take (configK cfg)
-                 $ (\xs -> sortByDistanceTo xs nid `usingConfig` cfg)
+                 $ (\xs -> sortByDistanceTo xs nid)
                  $ filter (`notElem` polled) (nodes ++ known)
 
   -- Check if k closest nodes have been polled already
@@ -464,7 +464,7 @@ continueLookup nodes signalAction continue end = do
   if | not (null newKnown) && not polledNeighbours -> do
          -- Send signal to the closest node, that hasn't
          -- been polled yet
-         let next = head (sortByDistanceTo newKnown nid `usingConfig` cfg)
+         let next = head (sortByDistanceTo newKnown nid)
          signalAction next
 
          -- Update known

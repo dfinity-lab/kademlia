@@ -128,11 +128,8 @@ type Validity = Bool
 --------------------------------------------------------------------------------
 
 -- | Create a NodeTree corresponding to the id
-create :: (Serialize i) => i -> WithConfig (NodeTree i)
-create nid = NodeTree
-             <$> toByteStruct nid
-             <*> pure (Bucket [] [])
-             <*> pure mempty
+create :: (Serialize i) => i -> NodeTree i
+create nid = NodeTree (toByteStruct nid) (Bucket [] []) mempty
 
 --------------------------------------------------------------------------------
 
@@ -245,7 +242,7 @@ insert tree node currentTime = do
   -- Check whether a bucket needs splitting FIXME
   let needsSplit :: NodeTreeFunction i Bool
       needsSplit depth valid _ nodes _ = do
-        maxDepth <- (subtract 1) . length <$> toByteStruct nid
+        let maxDepth = length (toByteStruct nid) - 1
 
         -- True iff a new node will be inserted.
         let newNodeWillBeInserted
@@ -326,7 +323,7 @@ split tree splitId = modifyAt tree splitId g
     -- Recursivly split the nodes into two buckets
     splitBucket i f
       = \case []     -> pure ([], [])
-              (n:ns) -> do bs <- toByteStruct (nodeId (f n))
+              (n:ns) -> do let bs = toByteStruct (nodeId (f n))
                            let bit = bs !! i
                            (left, right) <- splitBucket i f ns
                            pure $ if bit
@@ -365,8 +362,8 @@ findClosest
   -> Int
   -> WithConfig [Node i]
 findClosest (NodeTree idStruct treeElem _) nid n = do
-  let chooseClosest :: [Node i] -> WithConfig [Node i]
-      chooseClosest nodes = take n <$> sortByDistanceTo nodes nid
+  let chooseClosest :: [Node i] -> [Node i]
+      chooseClosest nodes = take n (sortByDistanceTo nodes nid)
 
   -- FIXME: combine left and right clauses in `go`
 
@@ -378,9 +375,9 @@ findClosest (NodeTree idStruct treeElem _) nid n = do
           -- Take the @n@ closest nodes.
           (_, _, Bucket nodePairs _) -> do
             let nodes = map fst nodePairs
-            if length nodes <= n
-              then pure nodes
-              else chooseClosest nodes
+            pure $ if length nodes <= n
+                   then nodes
+                   else chooseClosest nodes
           -- Take the closest nodes from the left child first and if those
           -- aren't enough, take the rest from the right.
           (_ : irest, False : trest, Split left right) -> do
@@ -399,13 +396,13 @@ findClosest (NodeTree idStruct treeElem _) nid n = do
           _ -> do
             error "Fundamental error in @go@ function in 'findClosest'"
 
-  targetStruct <- toByteStruct nid
-  go idStruct targetStruct treeElem >>= chooseClosest
+  let targetStruct = toByteStruct nid
+  chooseClosest <$> go idStruct targetStruct treeElem
 
 --------------------------------------------------------------------------------
 
 -- | Extract original ID from NodeTree
-extractId :: (Serialize i) => NodeTree i -> WithConfig i
+extractId :: (Serialize i) => NodeTree i -> i
 extractId (NodeTree nid _ _) = fromByteStruct nid
 
 --------------------------------------------------------------------------------
@@ -492,7 +489,7 @@ applyAt (NodeTree idStruct treeElem peers) nid f = do
           _ -> do
             error "Fundamental error in @go@ function in 'applyAt'"
 
-  targetStruct <- toByteStruct nid
+  let targetStruct = toByteStruct nid
   go idStruct targetStruct 0 True treeElem
 
 --------------------------------------------------------------------------------
@@ -531,7 +528,7 @@ modifyApplyAt (NodeTree idStruct treeElem peers) nid f = do
           _ -> do
             error "Fundamental error in @go@ function in 'modifyApplyAt'"
 
-  targetStruct <- toByteStruct nid
+  let targetStruct = toByteStruct nid
   (newElems, mpeers, val) <- go idStruct targetStruct 0 True treeElem
   pure (NodeTree idStruct newElems mpeers, val)
 

@@ -132,7 +132,7 @@ newInstance
   -> KademliaHandle i a
   -> IO (KademliaInstance i a)
 newInstance nid (extHost, extPort) cfg handle = do
-  tree    <- STM.atomically $ STM.newTVar (T.create nid `usingConfig` cfg)
+  tree    <- STM.atomically $ STM.newTVar (T.create nid)
   banned  <- STM.atomically $ STM.newTVar Map.empty
   threads <- STM.atomically $ STM.newTVar Map.empty
   let ownNode = Node (Peer extHost (fromIntegral extPort)) nid
@@ -334,7 +334,7 @@ restoreInstance
   -> KademliaSnapshot i
   -> IO (KademliaInstance i a)
 restoreInstance extAddr cfg handle snapshot = do
-  let nid = T.extractId (snapshotTree snapshot) `usingConfig` cfg
+  let nid = T.extractId (snapshotTree snapshot)
   let emptyInstance = newInstance nid extAddr cfg handle
   inst <- emptyInstance
   let st = instanceState inst
