@@ -217,7 +217,7 @@ createLFromSnapshot
 createLFromSnapshot (host, port) extAddr cfg snapshot logInfo logError = do
   rq <- emptyReplyQueueL logInfo logError
   let lim = configMsgSizeLimit cfg
-  let id' = T.extractId (snapshotTree snapshot) `usingConfig` cfg
+  let id' = T.extractId (snapshotTree snapshot)
   h <- openOnL (Text.unpack host) (show port) id' lim rq logInfo logError
   inst <- restoreInstance extAddr cfg h snapshot
   start inst

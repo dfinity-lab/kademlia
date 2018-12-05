@@ -56,7 +56,7 @@ insertCheck :: IdType -> Node IdType -> Bool
 insertCheck nid node = usingDefaultConfig $ do
     let timestamp = 0 :: Timestamp
     tree <- join (T.insert
-                  <$> T.create nid
+                  <$> pure (T.create nid)
                   <*> pure node
                   <*> pure timestamp)
     return $ lookupCheck tree node
@@ -66,7 +66,7 @@ deleteCheck :: IdType -> Node IdType -> Bool
 deleteCheck nid node = usingDefaultConfig $ do
     let timestamp = 0 :: Timestamp
     origin <- join (T.insert
-                    <$> T.create nid
+                    <$> pure (T.create nid)
                     <*> pure node
                     <*> pure timestamp)
     tree <- T.delete origin (nodePeer node)
@@ -77,56 +77,56 @@ withTree :: (T.NodeTree IdType -> [Node IdType] -> WithConfig a) ->
 withTree f bunch nid = usingDefaultConfig $ do
     let timestamp = 0 :: Timestamp
     tree <- join (foldrM (\node tree -> T.insert tree node timestamp)
-                  <$> T.create nid
+                  <$> pure (T.create nid)
                   <*> pure (nodes bunch))
     f tree (nodes bunch)
 
 splitCheck :: NodeBunch IdType -> IdType -> Property
-splitCheck = withTree $ \tree nodes ->
-    return . conjoin . foldr (foldingFunc tree) [] $ nodes
+splitCheck = withTree (\tree -> pure . conjoin . foldr (foldingFunc tree) [])
   where
-          tree `contains` node = node `elem` T.toList tree
+    contains tree node = node `elem` T.toList tree
 
-          foldingFunc tree node props = prop : props
-            where prop =
-                    counterexample ("Failed to find " ++ show node) $
-                  -- There is the possibiliy that nodes weren't inserted
-                  -- because of full buckets.
-                    lookupCheck tree node || not (tree `contains` (node, 0))
+    foldingFunc tree node props = prop : props
+      where
+        prop = counterexample ("Failed to find " ++ show node) (
+          -- There is the possibility that nodes weren't inserted
+          -- because of full buckets.
+          lookupCheck tree node || not (tree `contains` (node, 0)))
 
 -- | Make sure the bucket sizes end up correct
 bucketSizeCheck :: NodeBunch IdType -> IdType -> Bool
 bucketSizeCheck = withTree $ \tree _ -> return $ T.fold foldingFunc True tree
-    where foldingFunc _ False = False
-          foldingFunc b _     = length b <= configK defaultConfig
+  where
+    foldingFunc _ False = False
+    foldingFunc b _     = length b <= configK defaultConfig
 
 -- | Make sure refreshed Nodes are actually refreshed
 refreshCheck :: NodeBunch IdType -> IdType -> Bool
-refreshCheck = withTree $ \tree nodes -> do
-    let node = last nodes
-        foldingFunc _  False = False
-        foldingFunc b _      = node `notElem` b
-                               || head b == node
-    refreshed <- T.insert tree node (0 :: Timestamp)
-    pure (T.fold foldingFunc True refreshed)
+refreshCheck = withTree $ \tree ns -> do
+  let node = last ns
+      foldingFunc _  False = False
+      foldingFunc b _      = node `notElem` b
+                             || head b == node
+  refreshed <- T.insert tree node (0 :: Timestamp)
+  pure (T.fold foldingFunc True refreshed)
 
 -- | Make sure findClosest returns the Node with the closest Ids of all nodes
 --   in the tree.
 findClosestCheck :: IdType -> NodeBunch IdType -> IdType -> Property
-findClosestCheck nid = withTree $ \tree nodes -> do
-    let contains node = isJust <$> T.lookup tree (nodeId node)
-        distanceF = distance nid . nodeId
-    contained <- filterM contains nodes
-    treeClosest <- T.findClosest tree nid $ configK defaultConfig
-    packed <- zip contained <$> mapM distanceF contained
+findClosestCheck nid = withTree $ \tree ns -> do
+  let contains node = isJust <$> T.lookup tree (nodeId node)
+      distanceF = distance nid . nodeId
+  contained <- filterM contains ns
+  treeClosest <- T.findClosest tree nid $ configK defaultConfig
+  let packed = zip contained (map distanceF contained)
 
-    let g node props = counterexample (text node) (prop node):props
-                         where prop node' = node' `elem` treeClosest
-                               text node' = "Failed to find: " ++ show node'
-    let k = configK defaultConfig
-    let manualClosest = map fst (take k (sortBy (comparing snd) packed))
+  let g node props = counterexample (text node) (prop node):props
+                       where prop node' = node' `elem` treeClosest
+                             text node' = "Failed to find: " ++ show node'
+  let k = configK defaultConfig
+  let manualClosest = map fst (take k (sortBy (comparing snd) packed))
 
-    return . conjoin . foldr g [] $ manualClosest
+  return . conjoin . foldr g [] $ manualClosest
 
 -- | Check that 'T.pickupNotClosest' doesn't return closest nodes.
 pickupNotClosestDifferentCheck :: IdType -> NodeBunch IdType -> IdType -> Property
@@ -138,15 +138,14 @@ pickupNotClosestDifferentCheck nid = withTree $ \tree _ -> do
 
 -- | Make sure `toView` represents tree correctly
 viewCheck :: NodeBunch IdType -> IdType -> Bool
-viewCheck = withTree $ \tree nodes -> do
-    originId  <- T.extractId tree
+viewCheck = withTree $ \tree ns -> do
+    let originId = T.extractId tree
     let view = map (map fst) (T.toView tree)
-    sorted <- forM view $ \bucket -> do
-      sort <$> mapM (distance originId . nodeId) bucket
+    let sorted = map (sort . map (distance originId . nodeId)) view
       -- distance to this node increases from bucket to bucket
     return $  increases (concat sorted)
               -- and view contains all nodes from tree
-           && sameElements nodes (concat view)
+           && sameElements ns (concat view)
   where
     increases x  = x == sort x
     sameElements = (==) `on` S.fromList

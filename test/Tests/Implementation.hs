@@ -115,7 +115,7 @@ idClashCheck idA idB = monadicIO $ do
                            ids
                            :: IO [KademliaInstance IdType String]
 
-    () <$ K.joinNetwork kiA (nodePeer entryNode)
+    _          <- K.joinNetwork kiA (nodePeer entryNode)
     joinResult <- K.joinNetwork kiB (nodePeer entryNode)
 
     mapM_ K.close insts

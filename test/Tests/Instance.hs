@@ -25,7 +25,6 @@ module Tests.Instance
 import           Control.Concurrent           (forkIO, threadDelay)
 import           Control.Concurrent.Chan      (readChan, writeChan)
 import           Control.Monad                (liftM2, void)
-import           Data.Binary                  (decode, encode)
 import qualified Data.ByteString.Char8        as C
 import           Data.Function                (on)
 import qualified Data.Map                     as M
@@ -35,9 +34,9 @@ import           Data.List                    (sort)
 import           Test.HUnit
                  (Assertion, assertEqual, assertFailure)
 import           Test.QuickCheck
-                 (Property, arbitrary, conjoin, counterexample, (===))
+                 (Property, arbitrary, conjoin, (===))
 import           Test.QuickCheck.Monadic
-                 (PropertyM, assert, monadicIO, monitor, pick, run)
+                 (PropertyM, assert, monadicIO, pick, run)
 
 import           DFINITY.Discovery            (close, create)
 import           DFINITY.Discovery.Instance
@@ -112,7 +111,7 @@ trackingKnownPeersCheck = monadicIO $ do
 
         startRecvProcess khA
 
-        send khA pB $ PING
+        send khA pB PING
         () <$ readChan (replyQueueDispatchChan rq)
 
         node <- lookupNode kiB idA
@@ -124,8 +123,8 @@ trackingKnownPeersCheck = monadicIO $ do
 
     assert . isJust $ node
 
-    nodes <- run . dumpPeers $ kiB
-    assert $ nodes == [(fromJust node, 0 :: Timestamp)]
+    ns <- run . dumpPeers $ kiB
+    assert $ ns == [(fromJust node, 0 :: Timestamp)]
 
     return ()
 
@@ -145,15 +144,14 @@ isNodeBannedCheck = do
 
     check "Initial" False
 
-    banNode inst nodeB $ BanForever
+    banNode inst nodeB BanForever
     check "Plain ban set" True
 
-    banNode inst nodeB $ NoBan
+    banNode inst nodeB NoBan
     check "Reset ban to False" False
 
     close inst
 
-    where
 -- | Messages from banned node are ignored
 banNodeCheck :: Assertion
 banNodeCheck = do
@@ -169,7 +167,7 @@ banNodeCheck = do
     kiB <- create ("127.0.0.1", 1123) ("127.0.0.1", 1123) idB
            :: IO (KademliaInstance IdType String)
 
-    banNode kiB (Node peerA idA) $ BanForever
+    banNode kiB (Node peerA idA) BanForever
     startRecvProcess khA
 
     send khA peerB PING

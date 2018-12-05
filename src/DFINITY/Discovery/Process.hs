@@ -125,11 +125,11 @@ receivingProcessDo inst reply rq = do
         -- This node is not yet known
         when (isNothing (T.lookup tree originId `usingConfig` cfg)) $ do
           let closestKnown = T.findClosest tree originId 1 `usingConfig` cfg
-          let ownId        = T.extractId tree `usingConfig` cfg
+          let ownId        = T.extractId tree
           let self         = node { nodeId = ownId }
           let bucket       = self:closestKnown
           -- Find out closest known node
-          let closestId    = nodeId (head (sortByDistanceTo bucket originId `usingConfig` cfg))
+          let closestId    = nodeId (head (sortByDistanceTo bucket originId))
 
 
           -- This node can be assumed to be closest to the new node

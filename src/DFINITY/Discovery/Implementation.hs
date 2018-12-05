@@ -26,11 +26,13 @@ module DFINITY.Discovery.Implementation
 
 import           Prelude                      hiding (lookup)
 
+import           Control.Arrow                ((>>>))
 import           Control.Concurrent.Chan      (Chan, newChan, readChan)
 import           Control.Concurrent.STM       (atomically, readTVar)
 import           Control.Monad                (forM_, unless, when)
 import           Control.Monad.Extra          (unlessM)
-import           Control.Monad.IO.Class       (MonadIO (..))
+import           Control.Monad.IO.Class       (MonadIO (liftIO))
+import           Control.Monad.Trans.Class    (MonadTrans (lift))
 import           Control.Monad.Trans.State    (StateT, evalStateT, gets, modify)
 import           Data.List                    (delete, find, (\\))
 import           Data.Map.Strict              (Map)
@@ -79,7 +81,7 @@ lookup inst nid = runLookup go inst nid
       polled <- gets lookupStatePolled
       let rest = polled \\ known
       unless (null rest) $ do
-        let cachePeer = nodePeer $ head $ sortByDistanceTo rest nid `usingConfig` instanceConfig inst
+        let cachePeer = nodePeer $ head $ sortByDistanceTo rest nid
         liftIO (send (instanceHandle inst) cachePeer (STORE nid value))
 
       -- Return the value
@@ -142,7 +144,7 @@ store inst key val = runLookup go inst key
                 -- Select the peers closest to the key
                 storePeers = map nodePeer
                              $ take peerNum
-                             $ sortByDistanceTo polled key `usingConfig` instanceConfig inst
+                             $ sortByDistanceTo polled key
 
             -- Send them a STORE command
             forM_ storePeers $
@@ -150,11 +152,10 @@ store inst key val = runLookup go inst key
 
 -- | The different possible results of joinNetwork
 data JoinResult
-    = JoinSuccess
-    | NodeDown
-    | IDClash
-    | NodeBanned
-    deriving (Eq, Ord, Show)
+  = JoinSuccess
+  | NodeDown
+  | NodeBanned
+  deriving (Eq, Ord, Show)
 
 --------------------------------------------------------------------------------
 
@@ -175,18 +176,13 @@ joinNetwork inst initPeer
         else (do -- Poll the supplied node
                  -- liftIO $ putStrLn $ "join: sending to " ++ show (peer node)
                  sendSFirst initPeer
-                 -- Run a normal lookup from thereon out
-                 waitForReplyFirstTime nodeDown checkSignal)
-
-    waitForReplyFirstTime = waitForReplyDo True
-
-    -- No answer to the first signal means, that that Node is down
-    nodeDown = pure NodeDown
+                 -- Run a normal lookup from there out
+                 waitForReplyDo True (pure NodeDown) checkSignal)
 
     -- Retrieve your own id
     ownId = do
       tree <- atomically (readTVar (stateTree (instanceState inst)))
-      pure (T.extractId tree `usingConfig` instanceConfig inst)
+      pure (T.extractId tree)
 
     -- Also insert all returned nodes to our bucket (see [CSL-258])
     checkSignal (Signal _ (RETURN_NODES _ _ nodes)) = do
@@ -205,8 +201,8 @@ joinNetwork inst initPeer
     continue = waitForReply finish checkSignal
 
     -- Send a FIND_NODE command, looking up your own id
-    sendSFirst p = liftIO ownId >>= flip sendSignalWithoutPolled p . FIND_NODE
-    sendS p = liftIO ownId >>= flip sendSignal p . FIND_NODE
+    sendSFirst p = lift ownId >>= (FIND_NODE >>> flip sendSignalWithoutPolled p)
+    sendS      p = lift ownId >>= (FIND_NODE >>> flip sendSignal p)
 
     -- Return a success, when the operation finished cleanly
     finish = return JoinSuccess
@@ -389,7 +385,7 @@ waitForReplyDo withinJoin cancel onSignal = do
 
                  case cmd of
                    RETURN_NODES n nid _ -> do
-                     toRemove <- maybe True ((>= n) . (+1))
+                     toRemove <- maybe True (\s -> s + 1 >= n)
                                  <$> gets (Map.lookup node . lookupStatePending)
                      if toRemove
                        then removeFromPending node
@@ -438,7 +434,7 @@ continueLookup nodes signalAction continue end = do
         -- Return the k closest nodes, the lookup had contact with
         pure (take
               (configK cfg)
-              (sortByDistanceTo (known ++ polled) cid `usingConfig` cfg))
+              (sortByDistanceTo (known ++ polled) cid))
 
   let allClosestPolled
         :: (Eq i, Serialize i)
@@ -458,18 +454,17 @@ continueLookup nodes signalAction continue end = do
 
   let cfg = instanceConfig inst
 
-  -- Pick the k closest known nodes, that haven't been polled yet
+  -- Pick the k closest known nodes that haven't been polled yet
   let newKnown = take (configK cfg)
-                 $ (\xs -> sortByDistanceTo xs nid `usingConfig` cfg)
+                 $ (\xs -> sortByDistanceTo xs nid)
                  $ filter (`notElem` polled) (nodes ++ known)
 
   -- Check if k closest nodes have been polled already
   polledNeighbours <- allClosestPolled inst newKnown
 
   if | not (null newKnown) && not polledNeighbours -> do
-         -- Send signal to the closest node, that hasn't
-         -- been polled yet
-         let next = head (sortByDistanceTo newKnown nid `usingConfig` cfg)
+         -- Send signal to the closest node that hasn't been polled yet
+         let next = head (sortByDistanceTo newKnown nid)
          signalAction next
 
          -- Update known
@@ -498,8 +493,8 @@ sendSignalWithoutPolled cmd peer = do
 
   -- Not interested in results from banned node
   unlessM (liftIO (isNodeBanned inst peer)) $ do
-    let h = instanceHandle inst
     chan <- gets lookupStateReplyChan
+    let h = instanceHandle inst
 
     -- Send the signal
     liftIO $ send h peer cmd
