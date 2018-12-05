@@ -90,13 +90,13 @@ sortByDistanceTo
   :: (Serialize i)
   => [Node i]
   -> i
-  -> WithConfig [Node i]
+  -> [Node i]
 sortByDistanceTo bucket nid = do
   let f = distance nid . nodeId
-  let pack bk = zip bk <$> mapM f bk
+  let pack bk = zip bk (map f bk)
   let sort = sortBy (compare `on` snd)
   let unpack = map fst
-  unpack . sort <$> pack bucket
+  unpack (sort (pack bucket))
 
 --------------------------------------------------------------------------------
 
@@ -116,11 +116,10 @@ type ByteStruct = [Bool]
 toByteStruct
   :: (Serialize a)
   => a
-  -> WithConfig ByteStruct
-toByteStruct s = do
-    k <- C.configK <$> getConfig
-    let convert w = map (testBit w) [0..k]
-    return $ BS.foldr (\w bits -> convert w ++ bits) [] $ toBS s
+  -> ByteStruct
+toByteStruct s = BS.foldr (\w bits -> convert w ++ bits) [] $ toBS s
+  where
+    convert w = foldr (\i bits -> testBit w i : bits) [] [0..7]
 
 --------------------------------------------------------------------------------
 
@@ -128,19 +127,19 @@ toByteStruct s = do
 fromByteStruct
   :: (Serialize a)
   => ByteStruct
-  -> WithConfig a
-fromByteStruct bs = do
-    k <- C.configK <$> getConfig
-
-    let changeBit i w = if bs !! i then setBit w (i `mod` (k + 1)) else w
-    let createWord i = let pos = i * (k + 1)
-                       in foldr changeBit zeroBits [pos .. pos + k]
-    let indexes = [0 .. (length bs `div` (k + 1)) - 1]
-    let s = BS.pack (map createWord indexes)
-
-    case fromBS s of
-        (Right (converted, _)) -> return converted
-        (Left err)             -> error $ "Failed to convert from ByteStruct: " ++ err
+  -> a
+fromByteStruct bs
+  = case fromBS s of
+      (Right (converted, _)) -> converted
+      (Left err)             -> error $ "Failed to convert from ByteStruct: " ++ err
+  where
+    s = BS.pack . foldr (\i ws -> createWord i : ws) [] $ indexes
+    indexes = [0 .. (length bs `div` 8) - 1]
+    createWord i = let pos = i * 8
+                   in foldr changeBit zeroBits [pos .. pos + 7]
+    changeBit i w = if bs !! i
+                    then setBit w (i `mod` 8)
+                    else w
 
 --------------------------------------------------------------------------------
 
@@ -151,12 +150,12 @@ distance
   :: (Serialize i)
   => i
   -> i
-  -> WithConfig ByteStruct
-distance idA idB = do
-  let xor a b = not (a && b) && (a || b)
-  bsA <- toByteStruct idA
-  bsB <- toByteStruct idB
-  pure $ zipWith xor bsA bsB
+  -> ByteStruct
+distance idA idB
+  = let xor a b = not (a && b) && (a || b)
+        bsA = toByteStruct idA
+        bsB = toByteStruct idB
+    in zipWith xor bsA bsB
 
 --------------------------------------------------------------------------------
 

@@ -15,7 +15,7 @@ module Tests.Protocol
 
 --------------------------------------------------------------------------------
 
-import           Control.Arrow              (left, (>>>))
+import           Control.Arrow              (left)
 
 import qualified Data.ByteString            as B
 import           Test.QuickCheck
