@@ -104,8 +104,7 @@ instance (Arbitrary i, Eq i) => Arbitrary (NodeBunch i) where
         where individualIds = individual ((==) `on` nodeId)
 
 individual :: (a -> a -> Bool) -> [a] -> Bool
-individual eq s = length s == (length . clear $ s)
-    where clear = nubBy eq
+individual eq s = length s == length (nubBy eq s)
 
 -- | This is needed for the Implementation tests
 newtype IdBunch i = IB {
@@ -113,7 +112,7 @@ newtype IdBunch i = IB {
     } deriving (Show)
 
 instance (Arbitrary i, Eq i) => Arbitrary (IdBunch i) where
-    arbitrary = liftM IB $ vectorOf 20 arbitrary `suchThat` individual (==)
+    arbitrary = IB <$> vectorOf 20 arbitrary `suchThat` individual (==)
 
 instance Arbitrary BanState where
     arbitrary = oneof
