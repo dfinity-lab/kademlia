@@ -45,11 +45,11 @@ constructNetwork
   :: IdBunch IdType
   -> PropertyM IO [KademliaInstance IdType String]
 constructNetwork idBunch = run $ do
-  let entryNode = Node (Peer "127.0.0.1" 3123) (head (getIds idBunch))
-  instances <- zipWithM
-               (\p -> K.create ("127.0.0.1", p) ("127.0.0.1", p))
-               [3123..]
-               (getIds idBunch)
+  let ids = getIds idBunch
+  let entryNode = Node (Peer "127.0.0.1" 3123) (head ids)
+  let createInst port ident
+        = K.create ("127.0.0.1", port) ("127.0.0.1", port) ident
+  instances <- zipWithM createInst [3123..] ids
                :: IO [KademliaInstance IdType String]
   forM_ (tail instances) $ \inst -> do
     K.joinNetwork inst (nodePeer entryNode)
