@@ -72,7 +72,7 @@ expectCheck sig idA = monadicIO $ do
     let rtM = rType . command $ sig
     pre . isJust $ rtM
     let (Just rt) = rtM
-        rr = RR [rt] . nodeId . source $ sig
+        rr = RR [rt] . peer . source $ sig
 
     replySig <- run $ do
         rqA <- emptyReplyQueue

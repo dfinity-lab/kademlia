@@ -23,6 +23,7 @@ import qualified Data.ByteString.Char8       as C
 import           Data.Function               (on)
 import           Data.List                   (nubBy)
 import           Data.Word                   (Word16)
+import           GHC.Generics                (Generic)
 import           Network.Socket              (PortNumber)
 
 import           Test.QuickCheck             (Arbitrary (..), Gen, oneof, suchThat,
@@ -31,7 +32,7 @@ import           Test.QuickCheck.Instances   ()
 
 import           Network.Kademlia.HashNodeId (HashId (..), Nonce (..), hashAddress,
                                               hashIdLength, nonceLen)
-import           Network.Kademlia.Instance   (BanState (..))
+import           Network.Kademlia.Instance   (BanState (..), KademliaSnapshot (..))
 import           Network.Kademlia.Types      (Command (..), Node (..), Peer (..),
                                               Serialize (..), Signal (..))
 
@@ -56,7 +57,7 @@ instance Arbitrary BadHashId where
 
 newtype IdType = IT
     { getBS :: B.ByteString
-    } deriving (Eq, Ord, Binary)
+    } deriving (Eq, Ord, Generic, Binary)
 
 -- Custom show instance
 instance Show IdType where

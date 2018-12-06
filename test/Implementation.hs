@@ -33,13 +33,15 @@ import           Network.Kademlia.Types    (Node (..), Peer (..))
 
 import           TestTypes                 (IdBunch (..), IdType (..))
 
+createLocal x = K.create ("127.0.0.1", x) ("127.0.0.1", x)
+
 constructNetwork :: IdBunch IdType -> PropertyM IO [KademliaInstance IdType String]
 constructNetwork idBunch = run $ do
     let entryNode = Node (Peer "127.0.0.1" 3123) (head . getIds $ idBunch)
-    instances <- zipWithM (K.create "127.0.0.1") [3123..] (getIds idBunch)
+    instances <- zipWithM createLocal [3123..] (getIds idBunch)
                         :: IO [KademliaInstance IdType String]
 
-    forM_ (tail instances) (`K.joinNetwork` entryNode)
+    forM_ (tail instances) (`K.joinNetwork` peer entryNode)
     return instances
 
 joinNetworkVerifier :: Int -> IdBunch IdType -> Property
@@ -72,11 +74,11 @@ idClashCheck idA idB = monadicIO $ do
         entryNode = Node (Peer "127.0.0.1" 1124) idB
 
     joinResult <- run $ do
-        insts@[kiA, _, kiB] <- zipWithM (K.create "127.0.0.1") [1123..] ids
+        insts@[kiA, _, kiB] <- zipWithM createLocal [1123..] ids
                             :: IO [KademliaInstance IdType String]
 
-        () <$ K.joinNetwork kiA entryNode
-        joinResult <- K.joinNetwork kiB $ entryNode
+        () <$ K.joinNetwork kiA (peer entryNode)
+        joinResult <- K.joinNetwork kiB $ peer entryNode
 
         mapM_ K.close insts
 
@@ -89,8 +91,8 @@ idClashCheck idA idB = monadicIO $ do
 nodeDownCheck :: Assertion
 nodeDownCheck = do
     let entryNode = Node (Peer "127.0.0.1" 1124) idB
-    inst <- K.create "127.0.0.1" 1123 idA :: IO (KademliaInstance IdType String)
-    joinResult <- K.joinNetwork inst entryNode
+    inst <- createLocal 1123 idA :: IO (KademliaInstance IdType String)
+    joinResult <- K.joinNetwork inst $ peer entryNode
     K.close inst
 
     assertEqual "" joinResult K.NodeDown
@@ -105,10 +107,10 @@ joinBannedCheck idA idB = monadicIO $ do
     let entryNode = Node (Peer "127.0.0.1" 1124) idB
 
     joinResult <- run $ do
-        inst <- K.create "127.0.0.1" 1123 idA :: IO (KademliaInstance IdType String)
+        inst <- createLocal 1123 idA :: IO (KademliaInstance IdType String)
 
-        K.banNode inst idB $ BanForever
-        joinResult <- K.joinNetwork inst entryNode
+        K.banNode inst entryNode $ BanForever
+        joinResult <- K.joinNetwork inst $ peer entryNode
 
         K.close inst
 

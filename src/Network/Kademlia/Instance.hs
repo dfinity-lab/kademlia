@@ -5,6 +5,7 @@ Description : Implementation of the KademliaInstance type
 "Network.Kademlia.Instance" implements the KademliaInstance type.
 -}
 
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE ViewPatterns #-}
 
 module Network.Kademlia.Instance
@@ -39,6 +40,7 @@ import           Control.Monad.Extra         (unlessM)
 import           Control.Monad.Trans         ()
 import           Control.Monad.Trans.Reader  ()
 import           Control.Monad.Trans.State   ()
+import           Data.Binary                 (Binary)
 import           Data.Map                    (Map)
 import qualified Data.Map                    as M hiding (Map)
 import           Data.Time.Clock.POSIX       (getPOSIXTime)
@@ -67,7 +69,7 @@ data BanState
     = BanForever
     | BanTill Integer  -- time in microseconds
     | NoBan
-    deriving (Eq, Show, Generic)
+    deriving (Eq, Show, Generic, Binary)
 
 -- | Representation of the data the KademliaProcess carries
 data KademliaState i a
@@ -81,7 +83,7 @@ data KademliaSnapshot i
     = KSP {
       spTree   :: T.NodeTree i
     , spBanned :: Map Peer BanState
-    } deriving (Generic)
+    } deriving (Generic, Binary)
 
 -- | Create a new KademliaInstance from an Id and a KademliaHandle
 newInstance

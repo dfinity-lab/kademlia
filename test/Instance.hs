@@ -47,6 +47,8 @@ import           Network.Kademlia.Types      (Command (..), Node (..), Peer (..)
 import           TestTypes                   (IdType (..), NodeBunch (..))
 import           Tree                        (withTree)
 
+createLocal x = create ("127.0.0.1", x) ("127.0.0.1", x)
+
 -- | The default set of peers
 peers :: (Peer, Peer)
 peers = let pA = Peer "127.0.0.1" 1122
@@ -70,7 +72,7 @@ handlesPingCheck = do
     rq <- emptyReplyQueue
 
     khA <- openOn "127.0.0.1" "1122" idA rq :: IO (KademliaHandle IdType String)
-    kiB <- create "127.0.0.1" 1123 idB   :: IO (KademliaInstance IdType String)
+    kiB <- createLocal 1123 idB   :: IO (KademliaInstance IdType String)
 
     startRecvProcess khA
 
@@ -96,7 +98,7 @@ storeAndFindValueCheck key value = monadicIO $ do
         rq <- emptyReplyQueue
 
         khA <- openOn "127.0.0.1" "1122" idA rq
-        kiB <- create "127.0.0.1" 1123 idB :: IO (KademliaInstance IdType String)
+        kiB <- createLocal 1123 idB :: IO (KademliaInstance IdType String)
 
         startRecvProcess khA
 
@@ -134,7 +136,7 @@ trackingKnownPeersCheck = monadicIO $ do
         rq <- emptyReplyQueue :: IO (ReplyQueue IdType String)
 
         khA <- openOn "127.0.0.1" "1122" idA rq
-        kiB <- create "127.0.0.1" 1123 idB :: IO (KademliaInstance IdType String)
+        kiB <- createLocal 1123 idB :: IO (KademliaInstance IdType String)
 
         startRecvProcess khA
 
@@ -151,47 +153,50 @@ trackingKnownPeersCheck = monadicIO $ do
     assert . isJust $ node
 
     nodes <- run . dumpPeers $ kiB
-    assert $ nodes == [fromJust node]
+    assert $ fmap fst nodes == [fromJust node]
 
     return ()
 
 -- | Make sure `isNodeBanned` works correctly
 isNodeBannedCheck :: Assertion
 isNodeBannedCheck = do
-    inst <- create "127.0.0.1" 1123 idA :: IO (KademliaInstance IdType String)
+    inst <- createLocal 1123 idA :: IO (KademliaInstance IdType String)
     let check msg ans = do
-            ban <- isNodeBanned inst idB
+            ban <- isNodeBanned inst prB
             assertEqual msg ban ans
 
     check "Initial" False
 
-    banNode inst idB $ BanForever
+    banNode inst (Node prB idB) $ BanForever
     check "Plain ban set" True
 
-    banNode inst idB $ NoBan
+    banNode inst (Node prB idB) $ NoBan
     check "Reset ban to False" False
 
     close inst
 
     where idA = IT . C.pack $ "hello"
+          prA = Peer "127.0.0.1" 1123
           idB = IT . C.pack $ "herro"
+          prB = Peer "127.0.0.1" 1124
 
 -- | Messages from banned node are ignored
 banNodeCheck :: Assertion
 banNodeCheck = do
-    let (_, pB) = peers
+    let (pA, pB) = peers
 
     let (Right (idA, _)) = fromBS . C.replicate 32 $ 'a'
                            :: Either String (IdType, C.ByteString)
     let (Right (idB, _)) = fromBS . C.replicate 32 $ 'b'
                            :: Either String (IdType, C.ByteString)
+        
 
     rq <- emptyReplyQueue
 
     khA <- openOn "127.0.0.1" "1122" idA rq :: IO (KademliaHandle IdType String)
-    kiB <- create "127.0.0.1" 1123 idB   :: IO (KademliaInstance IdType String)
+    kiB <- createLocal 1123 idB   :: IO (KademliaInstance IdType String)
 
-    banNode kiB idA $ BanForever
+    banNode kiB (Node pA idA) $ BanForever
     startRecvProcess khA
 
     send khA pB PING
@@ -215,7 +220,7 @@ banNodeCheck = do
 -- Snapshot is serialized and deserealised well
 snapshotCheck :: NodeBunch IdType -> IdType -> [BanState] -> Property
 snapshotCheck = withTree $ \tree nodes -> return $ \bans ->
-        let banned = M.fromList $ zip (map nodeId nodes) bans
+        let banned = M.fromList $ zip (map peer nodes) bans
             sp     = KSP tree banned
             sp'    = decode . encode $ sp
         in  conjoin [ ((===) `on` spBanned) sp sp'

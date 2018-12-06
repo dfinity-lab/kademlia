@@ -84,7 +84,7 @@ toRegistration :: Signal i a -> Maybe (ReplyRegistration i)
 toRegistration sig = case rType . command $ sig of
                         Nothing -> Nothing
                         Just rt -> Just (RR [rt] origin)
-    where origin = nodeId . source $ sig
+    where origin = peer . source $ sig
 
           rType :: Command i a -> Maybe (ReplyType i)
           rType  PONG                  = Just  R_PONG

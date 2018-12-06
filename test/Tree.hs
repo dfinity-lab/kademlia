@@ -34,6 +34,11 @@ import           Network.Kademlia.Types  (Node (..), Serialize (..), distance)
 
 import           TestTypes               (IdType (..), NodeBunch (..))
 
+testTS = 0
+
+tInsert :: (Serialize i, Eq i) => T.NodeTree i -> Node i -> WithConfig (T.NodeTree i)
+tInsert tree node@Node{nodeId=nid,..} = T.insert tree node testTS
+
 usingDefaultConfig :: WithConfig a -> a
 usingDefaultConfig = flip usingConfig defaultConfig
 
@@ -44,27 +49,27 @@ lookupCheck tree node = usingDefaultConfig (T.lookup tree (nodeId node)) == Just
 -- | Check wether an inserted Node is retrievable
 insertCheck :: IdType -> Node IdType -> Bool
 insertCheck nid node = usingDefaultConfig $ do
-    tree <- join $ T.insert <$> T.create nid <*> pure node
+    tree <- join $ tInsert <$> T.create nid <*> pure node
     return $ lookupCheck tree node
 
 -- | Make sure a deleted Node can't be retrieved anymore
 deleteCheck :: IdType -> Node IdType -> Bool
 deleteCheck nid node = usingDefaultConfig $ do
-    origin <- join $ T.insert <$> T.create nid <*> pure node
-    tree <- T.delete origin . nodeId $ node
+    origin <- join $ tInsert <$> T.create nid <*> pure node
+    tree <- T.delete origin . peer $ node
     return . not . lookupCheck tree $ node
 
 withTree :: (T.NodeTree IdType -> [Node IdType] -> WithConfig a) ->
             NodeBunch IdType -> IdType -> a
 withTree f bunch nid = usingDefaultConfig $ do
-    tree <- join $ foldrM (flip T.insert) <$> (T.create nid) <*> pure (nodes bunch)
+    tree <- join $ foldrM (flip tInsert) <$> (T.create nid) <*> pure (nodes bunch)
     f tree $ nodes bunch
 
 splitCheck :: NodeBunch IdType -> IdType -> Property
 splitCheck = withTree $ \tree nodes ->
     return . conjoin . foldr (foldingFunc tree) [] $ nodes
   where
-          tree `contains` node = node `elem` T.toList tree
+          tree `contains` node = (node, testTS) `elem` T.toList tree
 
           foldingFunc tree node props = prop : props
             where prop =
@@ -86,7 +91,7 @@ refreshCheck = withTree $ \tree nodes -> do
         foldingFunc _  False = False
         foldingFunc b _      = node `notElem` b
                                || head b == node
-    refreshed <- T.insert tree node
+    refreshed <- tInsert tree node
     return $ T.fold foldingFunc True refreshed
 
 -- | Make sure findClosest returns the Node with the closest Ids of all nodes
@@ -120,11 +125,11 @@ viewCheck :: NodeBunch IdType -> IdType -> Bool
 viewCheck = withTree $ \tree nodes -> do
     originId  <- T.extractId tree
     let view = T.toView tree
-    sorted <- mapM (\bucket -> sort <$> mapM (distance originId . nodeId) bucket) view
+    sorted <- mapM (\bucket -> sort <$> mapM (distance originId . nodeId . fst) bucket) view
               -- distance to this node increases from bucket to bucket
     return $  increases (concat sorted)
               -- and view contains all nodes from tree
-           && sameElements nodes (concat view)
+           && sameElements nodes (fst <$> concat view)
   where
     increases x  = x == sort x
     sameElements = (==) `on` S.fromList

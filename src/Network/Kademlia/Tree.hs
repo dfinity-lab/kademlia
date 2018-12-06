@@ -8,6 +8,7 @@ and look up the known nodes.
 This module is designed to be used as a qualified import.
 -}
 
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE TupleSections #-}
 
 module Network.Kademlia.Tree
@@ -31,6 +32,7 @@ import           Prelude                 hiding (lookup)
 
 import           Control.Arrow           (second)
 import           Control.Monad.Random    (evalRand)
+import           Data.Binary             (Binary)
 import qualified Data.List               as L (delete, find, genericTake)
 import qualified Data.Map                as M
 import           GHC.Generics            (Generic)
@@ -48,16 +50,16 @@ data NodeTree i
     { ntOwnId :: ByteStruct
     , ntRoot  :: NodeTreeElem i
     , ntPeers :: M.Map Peer i
-    } deriving (Generic)
+    } deriving (Generic, Binary)
 
 data PingInfo = PingInfo
     { lastSeenTimestamp :: Timestamp
-    } deriving (Generic, Eq)
+    } deriving (Eq, Generic, Binary)
 
 data NodeTreeElem i
     = Split (NodeTreeElem i) (NodeTreeElem i)
     | Bucket ([(Node i, PingInfo)], [Node i])
-    deriving (Generic)
+    deriving (Generic, Binary)
 
 type NodeTreeFunction i a
     = Int

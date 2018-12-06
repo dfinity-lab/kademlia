@@ -6,6 +6,9 @@ Network.Kademlia.Types defines a few types that are used throughout the
 Network.Kademlia codebase.
 -}
 
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE TypeApplications #-}
+
 module Network.Kademlia.Types
        ( ByteStruct
        , Command   (..)
@@ -25,6 +28,7 @@ module Network.Kademlia.Types
        ) where
 
 import           Data.Bits                  (setBit, testBit, zeroBits)
+import           Data.Binary                (Binary (..))
 import qualified Data.ByteString            as B (ByteString, foldr, pack)
 import           Data.Function              (on)
 import           Data.Functor.Contravariant (contramap)
@@ -44,6 +48,10 @@ data Peer = Peer {
     , peerPort :: PortNumber
     } deriving (Eq, Ord, Generic)
 
+instance Binary Peer where
+  put (Peer host port) = put host >> put (fromIntegral port :: Word16)
+  get = Peer <$> get <*> (fromIntegral @Word16 @_ <$> get)
+
 unwrapPort :: PortNumber -> Word16
 unwrapPort = fromIntegral
 
@@ -57,7 +65,7 @@ instance Show Peer where
 data Node i = Node {
       peer   :: Peer
     , nodeId :: i
-    } deriving (Eq, Ord, Generic)
+    } deriving (Eq, Ord, Generic, Binary)
 
 instance Show i => Show (Node i) where
   show (Node peer nodeId) = show peer ++ " (" ++ show nodeId ++ ")"
