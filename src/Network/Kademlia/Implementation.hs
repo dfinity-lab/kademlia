@@ -18,6 +18,8 @@ module Network.Kademlia.Implementation
 
 import           Prelude                     hiding (lookup)
 
+import Data.ByteString.Char8 (unpack)
+import           Data.Hex                   (hex)
 import           Control.Concurrent.Chan     (Chan, newChan, readChan)
 import           Control.Concurrent.STM      (atomically, readTVar)
 import           Control.Monad               (when)
@@ -191,8 +193,12 @@ joinNetwork inst initPeer = ownId >>= runLookup go inst
     continue = waitForReply finish checkSignal
 
     -- Send a FIND_NODE command, looking up your own id
-    sendSFirst p = liftIO ownId >>= flip sendSignalWithoutPolled p . FIND_NODE
-    sendS p = liftIO ownId >>= flip sendSignal p . FIND_NODE
+    sendSFirst p = liftIO ownId >>= \o -> do
+      --liftIO $ putStrLn $ "joinNetwork/sendSFirst " <> (hex $ unpack $ toBS $ o)
+      flip sendSignalWithoutPolled p $ FIND_NODE o
+    sendS p = liftIO ownId >>= \o -> do
+      --liftIO $ putStrLn $ "joinNetwork/sendS " <> (hex $ unpack $ toBS $ o)
+      flip sendSignal p $ FIND_NODE o
 
     -- Return a success, when the operation finished cleanly
     finish = return JoinSuccess

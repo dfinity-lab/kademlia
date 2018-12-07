@@ -14,6 +14,8 @@ module TestTypes
        , IdBunch   (..)
        ) where
 
+import Data.ByteString.Char8 (unpack)
+import           Data.Hex                   (hex)
 
 import           Control.Arrow               (first)
 import           Control.Monad               (liftM, liftM2)
@@ -61,7 +63,9 @@ newtype IdType = IT
 
 -- Custom show instance
 instance Show IdType where
-    show = show . getBS
+    show = hex . unpack . getBS
+
+
 
 -- A simple 5-byte ByteString
 instance Serialize IdType where
@@ -79,7 +83,7 @@ instance Serialize String where
 
 instance Arbitrary IdType where
     arbitrary = do
-        str <- vectorOf 5 $ choose ('a', 'z')
+        str <- vectorOf 5 $ arbitrary
         return $ IT $ C.pack str
 
 instance Arbitrary PortNumber where

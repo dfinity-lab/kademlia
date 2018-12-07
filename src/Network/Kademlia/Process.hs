@@ -16,6 +16,8 @@ import qualified Data.Map                    as M
 import           Data.Maybe                  (fromJust, isJust)
 import           Data.Time.Clock.POSIX       (getPOSIXTime)
 import           System.Random               (newStdGen)
+import Data.ByteString.Char8 (unpack)
+import           Data.Hex                   (hex)
 
 import           Network.Kademlia.Config     (KademliaConfig (..), k, usingConfig)
 import           Network.Kademlia.Instance   (KademliaInstance (..), KademliaState (..),
@@ -187,6 +189,9 @@ handleCommand (FIND_VALUE key) peer inst = do
     case result of
         Just value -> liftIO $ send (handle inst) peer $ RETURN_VALUE key value
         Nothing    -> returnNodes peer key inst
+handleCommand (RETURN_NODES _ i is) peer inst = do
+  putStrLn $ "handlCommand RETURN_NODES " <> x i <> " got " <> show (fmap (x . nodeId) is)
+  where x = hex . unpack . toBS
 handleCommand _ _ _ = return ()
 
 -- | Store all values stored in the node in the 'k' closest known nodes every hour
@@ -244,6 +249,8 @@ returnNodes peer nid (KI ourNode h (KS sTree _ _) _ cfg@KademliaConfig {..}) = d
     let nodes       = case closest ++ randomNodes of
                           [] -> [ourNode]
                           xs -> xs
+    putStrLn $ "returnNodes  " <> (hex $ unpack $ toBS $ nodeId ourNode) <> " <- " <> show peer <> " " <> hex (unpack $ toBS nid)
+      <> ", tree size " <> show (length (T.toList tree)) <> ", " <> (show $ length nodes) <> " results " <> (show $ (fmap (hex . unpack . toBS . nodeId) nodes))
     liftIO $ send h peer (RETURN_NODES 1 nid nodes)
 
 -- Send PING and expect a PONG

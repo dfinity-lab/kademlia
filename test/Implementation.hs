@@ -16,6 +16,7 @@ module Implementation
        ) where
 
 import           Control.Applicative       ()
+import Control.Concurrent (threadDelay)
 import           Control.Concurrent.STM    (atomically, readTVar)
 import           Control.Monad             (forM, forM_, mapM, zipWithM)
 import qualified Data.ByteString.Char8     as C
@@ -44,18 +45,23 @@ constructNetwork idBunch = run $ do
     forM_ (tail instances) (`K.joinNetwork` peer entryNode)
     return instances
 
+{-
+cabal build -j && dist/build/library-test/library-test -p "Joining the Network full" --color never --quickcheck-replay=115410 --quickcheck-verbose
+-}
 joinNetworkVerifier :: Int -> IdBunch IdType -> Property
 joinNetworkVerifier bucketThreshold idBunch = monadicIO $ do
     instances <- constructNetwork idBunch
-    present   <- run $ do
+    buckets   <- run $ do
+        threadDelay 2000000
         mapM_ K.close instances
-        mapM isBucketFilled instances
-    assert $ and present
+        mapM bucketSizes instances
+    run $ print buckets
+    assert $ and (map ((>= bucketThreshold) . snd) buckets)
   where
-    isBucketFilled inst = do
+    bucketSizes inst = do
         tree <- atomically . readTVar . sTree . state $ inst
         let treeLen = length $ T.toList tree
-        return $ treeLen >= bucketThreshold
+        return (node inst, treeLen)
 
 -- | Checks that nodes contain at least @k@ neighbours in their buckets
 joinCheck :: IdBunch IdType -> Property
