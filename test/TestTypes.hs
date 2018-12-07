@@ -27,7 +27,7 @@ import           GHC.Generics                (Generic)
 import           Network.Socket              (PortNumber)
 
 import           Test.QuickCheck             (Arbitrary (..), Gen, oneof, suchThat,
-                                              vector, vectorOf)
+                                              vector, vectorOf, choose)
 import           Test.QuickCheck.Instances   ()
 
 import           Network.Kademlia.HashNodeId (HashId (..), Nonce (..), hashAddress,
@@ -79,7 +79,7 @@ instance Serialize String where
 
 instance Arbitrary IdType where
     arbitrary = do
-        str <- vectorOf 5 arbitrary
+        str <- vectorOf 5 $ choose ('a', 'z')
         return $ IT $ C.pack str
 
 instance Arbitrary PortNumber where
@@ -87,8 +87,7 @@ instance Arbitrary PortNumber where
 
 instance Arbitrary Peer where
     arbitrary = do
-        host <- arbitrary `suchThat` \s -> ' ' `notElem` s && not (null s)
-                                           && length s < 20
+        host <- vectorOf 10 $ choose ('a', 'z') -- FIXME: what happens with arbitrary data?
         port <- arbitrary
         return $ Peer host port
 
