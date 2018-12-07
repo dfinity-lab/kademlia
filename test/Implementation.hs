@@ -34,7 +34,14 @@ import           Network.Kademlia.Types    (Node (..), Peer (..))
 
 import           TestTypes                 (IdBunch (..), IdType (..))
 
-createLocal x = K.create ("127.0.0.1", x) ("127.0.0.1", x)
+import Text.Printf (printf)
+
+createLocal x i
+  = K.createL ("127.0.0.1", x) ("127.0.0.1", x) i K.defaultConfig
+--    (const (pure ()))
+--    (const (pure ()))
+    (\str -> printf "INFO  | %5v | %s\n" x str)
+    (\str -> printf "ERROR | %5v | %s\n" x str)
 
 constructNetwork :: IdBunch IdType -> PropertyM IO [KademliaInstance IdType String]
 constructNetwork idBunch = run $ do
@@ -55,7 +62,7 @@ joinNetworkVerifier bucketThreshold idBunch = monadicIO $ do
         threadDelay 2000000
         mapM_ K.close instances
         mapM bucketSizes instances
-    run $ print buckets
+    run $ printf "INFO  |       | joinNetworkVerifier | %s\n" (show buckets)
     assert $ and (map ((>= bucketThreshold) . snd) buckets)
   where
     bucketSizes inst = do

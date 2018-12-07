@@ -16,8 +16,10 @@ import qualified Data.Map                    as M
 import           Data.Maybe                  (fromJust, isJust)
 import           Data.Time.Clock.POSIX       (getPOSIXTime)
 import           System.Random               (newStdGen)
+import Data.List (sort)
 import Data.ByteString.Char8 (unpack)
 import           Data.Hex                   (hex)
+import Text.Printf (printf)
 
 import           Network.Kademlia.Config     (KademliaConfig (..), k, usingConfig)
 import           Network.Kademlia.Instance   (KademliaInstance (..), KademliaState (..),
@@ -249,8 +251,14 @@ returnNodes peer nid (KI ourNode h (KS sTree _ _) _ cfg@KademliaConfig {..}) = d
     let nodes       = case closest ++ randomNodes of
                           [] -> [ourNode]
                           xs -> xs
-    putStrLn $ "returnNodes  " <> (hex $ unpack $ toBS $ nodeId ourNode) <> " <- " <> show peer <> " " <> hex (unpack $ toBS nid)
-      <> ", tree size " <> show (length (T.toList tree)) <> ", " <> (show $ length nodes) <> " results " <> (show $ (fmap (hex . unpack . toBS . nodeId) nodes))
+    logInfo h
+      (printf "returnNodes | %s <- %s %s | tree size %3v | %3v results | %s\n"
+       (hex (unpack (toBS (nodeId ourNode))))
+       (show peer)
+       (hex (unpack (toBS nid)))
+       (length (T.toList tree))
+       (length nodes)
+       (show (hex . unpack . toBS . nodeId <$> sort nodes)))
     liftIO $ send h peer (RETURN_NODES 1 nid nodes)
 
 -- Send PING and expect a PONG
