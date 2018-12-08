@@ -55,8 +55,8 @@ defaultConfig :: KademliaConfig
 defaultConfig = KademliaConfig
     { k               = defaultK
     , expirationTime  = hour 1
-    , storeValueTime  = 1
-    , pingTime        = 1
+    , storeValueTime  = hour 1
+    , pingTime        = minute 5
     , nbLookupNodes   = 3
     , msgSizeLimit    = 1200
     , storeValues     = True

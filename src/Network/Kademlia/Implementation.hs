@@ -178,6 +178,7 @@ joinNetwork inst initPeer = ownId >>= runLookup go inst
 
     -- Also insert all returned nodes to our bucket (see [CSL-258])
     checkSignal (Signal _ (RETURN_NODES _ _ nodes)) = do
+        forM_ nodes $ liftIO . insertNode inst
         -- Check whether the own id was encountered. If so, return a IDClash
         -- error, otherwise, continue the lookup.
         -- Commented out due to possibility of bug (like when node reconnects)
@@ -222,6 +223,7 @@ lookupNode inst nid = runLookup go inst nid
     -- Also insert all returned nodes to our tree (see [CSL-258])
     checkSignal :: Signal i v -> LookupM i a (Maybe (Node i))
     checkSignal (Signal _ (RETURN_NODES _ _ nodes)) = do
+        forM_ nodes $ liftIO . insertNode inst
         let targetNode = find ((== nid) . nodeId) nodes
         case targetNode of
             Nothing  -> continueLookup nodes sendS continue end

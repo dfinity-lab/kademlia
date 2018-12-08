@@ -38,10 +38,10 @@ import Text.Printf (printf)
 
 createLocal x i
   = K.createL ("127.0.0.1", x) ("127.0.0.1", x) i K.defaultConfig
---    (const (pure ()))
---    (const (pure ()))
-    (\str -> printf "INFO  | %5v | %s\n" x str)
-    (\str -> printf "ERROR | %5v | %s\n" x str)
+    (const (pure ()))
+    (const (pure ()))
+--    (\str -> printf "INFO  | %5v | %s\n" x str)
+--    (\str -> printf "ERROR | %5v | %s\n" x str)
 
 constructNetwork :: IdBunch IdType -> PropertyM IO [KademliaInstance IdType String]
 constructNetwork idBunch = run $ do
@@ -59,7 +59,7 @@ joinNetworkVerifier :: Int -> IdBunch IdType -> Property
 joinNetworkVerifier bucketThreshold idBunch = monadicIO $ do
     instances <- constructNetwork idBunch
     buckets   <- run $ do
-        threadDelay 2000000
+        --threadDelay 2000000
         mapM_ K.close instances
         mapM bucketSizes instances
     run $ printf "INFO  |       | joinNetworkVerifier | %s\n" (show buckets)
