@@ -112,7 +112,7 @@ newtype IdBunch i = IB {
     } deriving (Show)
 
 instance (Arbitrary i, Eq i) => Arbitrary (IdBunch i) where
-    arbitrary = IB <$> vectorOf 20 arbitrary `suchThat` individual (==)
+    arbitrary = IB <$> vectorOf 30 arbitrary `suchThat` individual (==)
 
 instance Arbitrary BanState where
     arbitrary = oneof

@@ -90,7 +90,6 @@ joinFullCheck
   :: IdBunch IdType
   -> Property
 joinFullCheck = joinNetworkVerifier (defaultK + defaultRoutingSharingN)
--- FIXME: this is broken
 
 --------------------------------------------------------------------------------
 
