@@ -18,8 +18,8 @@ import           Test.Tasty.HUnit      as HU
 import           Test.Tasty.QuickCheck as QC
 
 import           Tests.Implementation
-                 (idClashCheck, joinBannedCheck, joinCheck, joinFullCheck,
-                 lookupNodesCheck, nodeDownCheck)
+                 (joinBannedCheck, joinCheck, joinFullCheck, lookupNodesCheck,
+                 nodeDownCheck)
 import           Tests.Instance
                  (banNodeCheck, handlesPingCheck, isNodeBannedCheck,
                  snapshotCheck, trackingKnownPeersCheck)
@@ -121,8 +121,6 @@ implementationChecks = testGroup "DFINITY.Discovery.Implementation" [
          joinCheck
      , QC.testProperty "Joining the Network full works"
          joinFullCheck
-     , QC.testProperty "ID clashes are detected"
-         idClashCheck
      , QC.testProperty "Join network to banned node works"
          joinBannedCheck
      , QC.testProperty "Looking up Nodes works"
