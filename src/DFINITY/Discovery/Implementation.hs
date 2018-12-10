@@ -148,11 +148,10 @@ store inst key val = runLookup go inst key
 
 -- | The different possible results of joinNetwork
 data JoinResult
-    = JoinSuccess
-    | NodeDown
-    | IDClash
-    | NodeBanned
-    deriving (Eq, Ord, Show)
+  = JoinSuccess
+  | NodeDown
+  | NodeBanned
+  deriving (Eq, Ord, Show)
 
 --------------------------------------------------------------------------------
 
@@ -183,14 +182,9 @@ joinNetwork inst initPeer
 
     -- Also insert all returned nodes to our bucket (see [CSL-258])
     checkSignal (Signal _ (RETURN_NODES _ _ nodes)) = do
-      -- Check whether the own id was encountered. If so, return a IDClash
-      -- error, otherwise, continue the lookup.
-      -- Commented out due to possibility of bug (like when node reconnects)
-      tId <- gets lookupStateTargetId
-      case find (\retNode -> nodeId retNode == tId) nodes of
-          Just _ -> return IDClash
-          _      -> continueLookup nodes sendS continue finish
-      -- continueLookup nodes sendS continue finish
+      forM_ nodes $ \node -> do
+        liftIO $ insertNode inst node
+      continueLookup nodes sendS continue finish
 
     checkSignal _ = error "Unknow signal for @joinNetwork@"
 
@@ -232,6 +226,8 @@ lookupNode inst nid = runLookup go inst nid
     -- Also insert all returned nodes to our tree.
     checkSignal :: Signal i v -> LookupM i a (Maybe (Node i))
     checkSignal (Signal _ (RETURN_NODES _ _ nodes)) = do
+      forM_ nodes $ \node -> do
+        liftIO $ insertNode inst node
       let targetNode = find ((== nid) . nodeId) nodes
       case targetNode of
         Nothing  -> continueLookup nodes sendS continue end
