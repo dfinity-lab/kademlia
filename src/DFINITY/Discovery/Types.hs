@@ -44,21 +44,21 @@ import           Network.Socket  (PortNumber (..), SockAddr (..), inet_ntoa)
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 
-import           Data.Text       (Text)
-import qualified Data.Text       as Text
+import           Data.IP         (IP)
+import qualified Data.IP         as IP
 
 --------------------------------------------------------------------------------
 
 -- | Representation of a UDP peer.
 data Peer
   = Peer
-    { peerHost :: !Text
+    { peerHost :: !IP
     , peerPort :: !PortNumber
     }
   deriving (Eq, Ord, Generic)
 
 instance Show Peer where
-  show (Peer h p) = Text.unpack h ++ ":" ++ show p
+  show (Peer h p) = show h ++ ":" ++ show p
 
 unwrapPort :: PortNumber -> Word16
 unwrapPort = fromIntegral
@@ -157,9 +157,7 @@ distance idA idB
 
 -- | Try to convert a 'SockAddr' to a 'Peer'
 toPeer :: SockAddr -> IO (Maybe Peer)
-toPeer (SockAddrInet port host) = do hostname <- Text.pack <$> inet_ntoa host
-                                     pure $ Just (Peer hostname port)
-toPeer _                        = pure Nothing
+toPeer sockAddr = pure (uncurry Peer <$> IP.fromSockAddr sockAddr)
 
 --------------------------------------------------------------------------------
 

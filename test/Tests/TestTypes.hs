@@ -20,6 +20,7 @@ module Tests.TestTypes
 
 --------------------------------------------------------------------------------
 
+import           Control.Applicative        ((<|>))
 import           Control.Arrow              (first)
 import           Control.Monad              (liftM, liftM2)
 import           Data.Binary                (Binary)
@@ -34,6 +35,9 @@ import           Network.Socket             (PortNumber)
 import           Test.QuickCheck
                  (Arbitrary (..), Gen, oneof, suchThat, vectorOf)
 import           Test.QuickCheck.Instances  ()
+
+import           Data.IP                    (IP (IPv4, IPv6))
+import qualified Data.IP                    as IP
 
 import           DFINITY.Discovery.Instance (BanState (..))
 import           DFINITY.Discovery.Types
@@ -73,11 +77,13 @@ instance Arbitrary PortNumber where
     arbitrary = liftM fromIntegral (arbitrary :: Gen Word16)
 
 instance Arbitrary Peer where
-    arbitrary = do
-        host <- arbitrary `suchThat` \s -> ' ' `notElem` s && not (null s)
-                                           && length s < 20
-        port <- arbitrary
-        return $ Peer (Text.pack host) port
+  arbitrary = do
+    host <- oneof
+            [ (IPv4 . IP.fromHostAddress  <$> arbitrary)
+            , (IPv6 . IP.fromHostAddress6 <$> arbitrary)
+            ]
+    port <- arbitrary
+    pure (Peer host port)
 
 instance (Arbitrary i, Arbitrary v) => Arbitrary (Command i v) where
     arbitrary = oneof [

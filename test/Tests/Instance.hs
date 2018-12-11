@@ -78,7 +78,7 @@ handlesPingCheck = do
 
     rq <- emptyReplyQueue
 
-    khA <- openOn "127.0.0.1" "1122" idA rq :: IO (KademliaHandle IdType String)
+    khA <- openOn "127.0.0.1" 1122 idA rq :: IO (KademliaHandle IdType String)
     kiB <- create ("127.0.0.1", 1123) ("127.0.0.1", 1123) idB
            :: IO (KademliaInstance IdType String)
 
@@ -105,7 +105,7 @@ trackingKnownPeersCheck = monadicIO $ do
     (node, kiB) <- run $ do
         rq <- emptyReplyQueue :: IO (ReplyQueue IdType String)
 
-        khA <- openOn "127.0.0.1" "1122" idA rq
+        khA <- openOn "127.0.0.1" 1122 idA rq
         kiB <- create ("127.0.0.1", 1123) ("127.0.0.1", 1123) idB
                :: IO (KademliaInstance IdType String)
 
@@ -163,7 +163,7 @@ banNodeCheck = do
                            :: Either String (IdType, C.ByteString)
     rq <- emptyReplyQueue
 
-    khA <- openOn "127.0.0.1" "1122" idA rq :: IO (KademliaHandle IdType String)
+    khA <- openOn "127.0.0.1" 1122 idA rq :: IO (KademliaHandle IdType String)
     kiB <- create ("127.0.0.1", 1123) ("127.0.0.1", 1123) idB
            :: IO (KademliaInstance IdType String)
 
