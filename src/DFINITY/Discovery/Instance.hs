@@ -46,7 +46,8 @@ import           GHC.Generics                 (Generic)
 import           Data.Map.Lazy                (Map)
 import qualified Data.Map.Lazy                as Map
 
-import           Data.Text                    (Text)
+import           Data.IP                      (IP)
+import           Network.Socket               (PortNumber)
 
 import           DFINITY.Discovery.Config
                  (KademliaConfig, defaultConfig, usingConfig)
@@ -122,7 +123,7 @@ data KademliaSnapshot i
 newInstance
   :: (Serialize i)
   => i
-  -> (Text, Word16)
+  -> (IP, PortNumber)
   -> KademliaConfig
   -> KademliaHandle i a
   -> IO (KademliaInstance i a)
@@ -130,7 +131,7 @@ newInstance nid (extHost, extPort) cfg handle = do
   tree    <- STM.atomically $ STM.newTVar (T.create nid)
   banned  <- STM.atomically $ STM.newTVar Map.empty
   threads <- STM.atomically $ STM.newTVar Map.empty
-  let ownNode = Node (Peer extHost (fromIntegral extPort)) nid
+  let ownNode = Node (Peer extHost extPort) nid
   pure $ KademliaInstance ownNode handle (KademliaState tree banned) threads cfg
 
 --------------------------------------------------------------------------------
@@ -268,7 +269,7 @@ takeSnapshot = takeSnapshot' . instanceState
 -- Restores instance from snapshot.
 restoreInstance
   :: (Serialize i)
-  => (Text, Word16)
+  => (IP, PortNumber)
   -> KademliaConfig
   -> KademliaHandle i a
   -> KademliaSnapshot i

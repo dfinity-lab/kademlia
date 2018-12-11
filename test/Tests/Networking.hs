@@ -58,9 +58,9 @@ sendCheck cmd = monadicIO $ do
         rqA <- emptyReplyQueue
         rqB <- emptyReplyQueue
 
-        khA <- openOn "127.0.0.1" "1122" idA rqA
-        khB <- (openOn "127.0.0.1" "1123" idB rqB
-                    :: IO (KademliaHandle IdType String))
+        khA <- openOn "127.0.0.1" 1122 idA rqA
+        khB <- openOn "127.0.0.1" 1123 idB rqB
+               :: IO (KademliaHandle IdType String)
 
         startRecvProcess khB
 
@@ -90,7 +90,7 @@ expectCheck sig idA = monadicIO $ do
     replySig <- run $ do
         rqA <- emptyReplyQueue
 
-        khA <- openOn "127.0.0.1" "1122" idA rqA
+        khA <- openOn "127.0.0.1" 1122 idA rqA
 
         startRecvProcess khA
 
