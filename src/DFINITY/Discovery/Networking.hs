@@ -43,7 +43,8 @@ import           Network.Socket
 import qualified Network.Socket.ByteString    as S
 import           System.IO.Error              (ioError, userError)
 
-import qualified Data.Text                    as Text
+import           Data.IP                      (IP)
+import           Network.Socket               (PortNumber)
 
 import           DFINITY.Discovery.Config
                  (KademliaConfig (..), defaultConfig)
@@ -81,8 +82,8 @@ handleLogError' h = handleLogError h . show
 
 openOn
   :: (Show i, Serialize i, Serialize a)
-  => String
-  -> String
+  => IP
+  -> PortNumber
   -> i
   -> ReplyQueue i a
   -> IO (KademliaHandle i a)
@@ -97,8 +98,8 @@ openOn host port id' rq
 -- 'KademliaHandle'.
 openOnL
   :: (Show i, Serialize i, Serialize a)
-  => String
-  -> String
+  => IP
+  -> PortNumber
   -> i
   -> Int
   -> ReplyQueue i a
@@ -109,8 +110,8 @@ openOnL host port id' lim rq logInfo logError = withSocketsDo $ do
   -- Get address to bind to
   serveraddrs <- getAddrInfo
                  (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
-                 (Just host)
-                 (Just port)
+                 (Just (show host))
+                 (Just (show port))
 
   -- TODO: support IPV6 by binding to two sockets
   let serveraddr = head $ filter (\a -> addrFamily a == AF_INET) serveraddrs
@@ -156,7 +157,7 @@ sendProcessL sock lim nid chan logInfo logError = do
         -- FIXME: partial pattern match
         (peeraddr : _) <- getAddrInfo
                           Nothing
-                          (Just (Text.unpack host))
+                          (Just (show host))
                           (Just (show port))
 
         -- Send the signal

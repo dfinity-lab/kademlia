@@ -150,8 +150,8 @@ module DFINITY.Discovery
 
 import           Data.Word                        (Word16)
 
-import           Data.Text                        (Text)
-import qualified Data.Text                        as Text
+import           Data.IP                          (IP)
+import           Network.Socket                   (PortNumber)
 
 import           DFINITY.Discovery.Config
 import           DFINITY.Discovery.Implementation as I
@@ -168,9 +168,9 @@ import           DFINITY.Discovery.Types
 -- Create a new 'KademliaInstance' corresponding to a given ID on a given port.
 create
   :: (Show i, Serialize i, Ord i, Serialize a, Eq a)
-  => (Text, Word16)
+  => (IP, PortNumber)
   -- ^ Bind address
-  -> (Text, Word16)
+  -> (IP, PortNumber)
   -- ^ External address
   -> i
   -> IO (KademliaInstance i a)
@@ -183,9 +183,9 @@ create bindAddr extAddr id' = do
 -- Same as 'create', but with logging
 createL
   :: (Show i, Serialize i, Ord i, Serialize a, Eq a)
-  => (Text, Word16)
+  => (IP, PortNumber)
   -- ^ Bind address
-  -> (Text, Word16)
+  -> (IP, PortNumber)
   -- ^ External address
   -> i
   -> KademliaConfig
@@ -195,7 +195,7 @@ createL
 createL (host, port) extAddr id' cfg logInfo logError = do
   rq <- emptyReplyQueueL logInfo logError
   let lim = configMsgSizeLimit cfg
-  h <- openOnL (Text.unpack host) (show port) id' lim rq logInfo logError
+  h <- openOnL host port id' lim rq logInfo logError
   inst <- newInstance id' extAddr cfg h
   start inst
   pure inst
@@ -205,9 +205,9 @@ createL (host, port) extAddr id' cfg logInfo logError = do
 -- | Create instance with logging from the given 'KademliaSnapshot'.
 createLFromSnapshot
   :: (Show i, Serialize i, Ord i, Serialize a, Eq a)
-  => (Text, Word16)
+  => (IP, PortNumber)
   -- ^ Bind address
-  -> (Text, Word16)
+  -> (IP, PortNumber)
   -- ^ External address
   -> KademliaConfig
   -> KademliaSnapshot i a
@@ -218,7 +218,7 @@ createLFromSnapshot (host, port) extAddr cfg snapshot logInfo logError = do
   rq <- emptyReplyQueueL logInfo logError
   let lim = configMsgSizeLimit cfg
   let id' = T.extractId (snapshotTree snapshot)
-  h <- openOnL (Text.unpack host) (show port) id' lim rq logInfo logError
+  h <- openOnL host port id' lim rq logInfo logError
   inst <- restoreInstance extAddr cfg h snapshot
   start inst
   pure inst
