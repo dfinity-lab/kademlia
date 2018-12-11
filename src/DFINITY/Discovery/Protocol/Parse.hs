@@ -159,10 +159,10 @@ parseNode
   => Parse (Node i)
 parseNode = do
   nid <- parseSerialize
-  host <- parseSplit ' '
+  host <- read . Text.unpack . Text.decodeUtf8 <$> parseSplit ' '
   skipCharacter
   port <- parseWord16
-  let peer = Peer (Text.decodeUtf8 host) (fromIntegral port)
+  let peer = Peer host (fromIntegral port)
   pure $ Node peer nid
 
 --------------------------------------------------------------------------------

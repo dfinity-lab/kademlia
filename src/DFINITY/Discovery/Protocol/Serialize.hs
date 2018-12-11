@@ -30,6 +30,7 @@ import qualified Data.ByteString         as BS
 import           Data.ByteString.Builder (toLazyByteString, word16BE)
 import qualified Data.ByteString.Lazy    as LBS
 
+import qualified Data.Text               as Text
 import qualified Data.Text.Encoding      as Text
 
 import           DFINITY.Discovery.Types
@@ -97,7 +98,7 @@ commandId (RETURN_VALUE _ _)   = 6
 nodeToArg :: (Serialize i) => Node i -> ByteString
 nodeToArg node
   = let nid = toBS (nodeId node)
-        host = peerHost (nodePeer node)
+        host = Text.pack (show (peerHost (nodePeer node)))
         port = toBinary (fromIntegral (peerPort (nodePeer node)))
         -- Converts a Word16 into a two character ByteString
         toBinary = BS.concat . LBS.toChunks . toLazyByteString . word16BE
