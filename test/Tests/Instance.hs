@@ -192,9 +192,9 @@ banNodeCheck = do
 
 -- Snapshot is serialized and deserialized well
 snapshotCheck :: NodeBunch IdType -> IdType -> [BanState] -> Property
-snapshotCheck = withTree $ \tree nodes -> pure $ \bans ->
-        let banned = M.fromList $ zip (map nodePeer nodes) bans
-            sp     = KademliaSnapshot tree banned
+snapshotCheck = withTree $ \tree ns -> pure $ \bans ->
+        let banned = M.fromList $ zip (map nodePeer ns) bans
+            sp     = KademliaSnapshot tree banned mempty
             sp'    = sp -- FIXME: decode (encode sp)
         in  conjoin [ ((===) `on` snapshotBanned)                 sp sp'
                     , ((===) `on` sort . T.toList . snapshotTree) sp sp'

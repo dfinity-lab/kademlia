@@ -24,14 +24,17 @@ module DFINITY.Discovery.Implementation
 
 --------------------------------------------------------------------------------
 
+import           Prelude                      hiding (lookup)
+
 import           Control.Concurrent.Chan      (Chan, newChan, readChan)
 import           Control.Concurrent.STM       (atomically, readTVar)
-import           Control.Monad                (forM_, when)
+import           Control.Monad                (forM_, unless, when)
 import           Control.Monad.Extra          (unlessM)
 import           Control.Monad.IO.Class       (MonadIO (..))
 import           Control.Monad.Trans.State    (StateT, evalStateT, gets, modify)
-import           Data.List                    (delete, find)
-import qualified Data.Map                     as M
+import           Data.List                    (delete, find, (\\))
+import           Data.Map.Strict              (Map)
+import qualified Data.Map.Strict              as Map
 import           Data.Word                    (Word8)
 
 import           DFINITY.Discovery.Config     (KademliaConfig (..), usingConfig)
@@ -63,24 +66,24 @@ lookup inst nid = runLookup go inst nid
     -- cache the value in the closest peer that didn't return it and
     -- finally return the value
     checkSignal (Signal origin (RETURN_VALUE _ value)) = do
-        -- Abuse the known list for saving the peers that are *known* to
-        -- store the value
-        modify $ \s -> s { lookupStateKnown = [origin] }
+      -- Abuse the known list for saving the peers that are *known* to
+      -- store the value
+      modify $ \s -> s { lookupStateKnown = [origin] }
 
-        -- Finish the lookup, recording which nodes returned the value
-        finish
+      -- Finish the lookup, recording which nodes returned the value
+      finish
 
-        -- Store the value in the closest peer that didn't return the
-        -- value
-        known <- gets lookupStateKnown
-        polled <- gets lookupStatePolled
-        let rest = polled \\ known
-        unless (null rest) $ do
-            let cachePeer = nodePeer $ head $ sortByDistanceTo rest nid `usingConfig` instanceConfig inst
-            liftIO . send (instanceHandle inst) cachePeer . STORE nid $ value
+      -- Store the value in the closest peer that didn't return the
+      -- value
+      known  <- gets lookupStateKnown
+      polled <- gets lookupStatePolled
+      let rest = polled \\ known
+      unless (null rest) $ do
+        let cachePeer = nodePeer $ head $ sortByDistanceTo rest nid `usingConfig` instanceConfig inst
+        liftIO (send (instanceHandle inst) cachePeer (STORE nid value))
 
-        -- Return the value
-        pure . Just $ (value, origin)
+      -- Return the value
+      pure (Just (value, origin))
 
     -- When receiving a RETURN_NODES command, throw the nodes into the
     -- lookup loop and continue the lookup
@@ -137,8 +140,9 @@ store inst key val = runLookup go inst key
                 -- Don't select more than k peers
                 peerNum = if length polled > k' then k' else length polled
                 -- Select the peers closest to the key
-                storePeers =
-                    map nodePeer . take peerNum $ sortByDistanceTo polled key `usingConfig` instanceConfig inst
+                storePeers = map nodePeer
+                             $ take peerNum
+                             $ sortByDistanceTo polled key `usingConfig` instanceConfig inst
 
             -- Send them a STORE command
             forM_ storePeers $
@@ -259,7 +263,7 @@ data LookupState i a
     , lookupStateTargetId  :: !i
     , lookupStateReplyChan :: !(Chan (Reply i a))
     , lookupStateKnown     :: ![Node i]
-    , lookupStatePending   :: !(M.Map (Node i) Word8)
+    , lookupStatePending   :: !(Map (Node i) Word8)
     , lookupStatePolled    :: ![Node i]
     }
   deriving ()
@@ -342,17 +346,18 @@ waitForReplyDo withinJoin cancel onSignal = do
 
   -- Remove the node from the list of nodes with pending replies
   let removeFromPending peer
-        = modify (modifyPending (M.delete peer))
+        = modify (modifyPending (Map.delete peer))
 
   -- Remove every trace of the node's existance
   let removeFromEverywhere node
-        = modify (modifyPending  (M.delete node)
+        = modify (modifyPending  (Map.delete node)
                   . modifyKnown  (delete node)
                   . modifyPolled (delete node))
 
   -- FIXME: doc
   let removeFromEverywherePeer peer
-        = modify (modifyPending  (M.filterWithKey (\k _ -> nodePeer k /= peer))
+        = modify (modifyPending  (Map.filterWithKey
+                                  (\k _ -> nodePeer k /= peer))
                   . modifyKnown  (filter ((/= peer) . nodePeer))
                   . modifyPolled (filter ((/= peer) . nodePeer)))
 
@@ -375,7 +380,7 @@ waitForReplyDo withinJoin cancel onSignal = do
                  continueIfMorePending)
         else (do when withinJoin $ do
                    -- Mark the node as polled and pending
-                   modify (modifyPending (M.insert node 0))
+                   modify (modifyPending (Map.insert node 0))
                    modify (modifyPolled  (node:))
 
                  -- Insert the node into the tree, as it might be a new one or
@@ -385,10 +390,10 @@ waitForReplyDo withinJoin cancel onSignal = do
                  case cmd of
                    RETURN_NODES n nid _ -> do
                      toRemove <- maybe True ((>= n) . (+1))
-                                 <$> gets (M.lookup node . lookupStatePending)
+                                 <$> gets (Map.lookup node . lookupStatePending)
                      if toRemove
                        then removeFromPending node
-                       else do modify (modifyPending (M.adjust (+1) node))
+                       else do modify (modifyPending (Map.adjust (+1) node))
                                let reg = ReplyRegistration
                                          [R_RETURN_NODES nid]
                                          (nodePeer node)
@@ -527,7 +532,7 @@ sendSignal cmd node = do
     pending <- gets lookupStatePending
     -- Mark the node as polled and pending
     modify $ \s -> s { lookupStatePolled  = node : polled
-                     , lookupStatePending = M.insert node 0 pending
+                     , lookupStatePending = Map.insert node 0 pending
                      }
 
 --------------------------------------------------------------------------------

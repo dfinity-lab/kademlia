@@ -29,7 +29,7 @@ module DFINITY.Discovery.Config
 import           Control.Monad.Identity  (Identity, runIdentity)
 import           Control.Monad.Reader    (ReaderT, ask, runReaderT)
 import           Control.Monad.Trans     (MonadTrans)
-import           DFINITY.Discovery.Utils (minute)
+import           DFINITY.Discovery.Utils (hour, minute)
 
 --------------------------------------------------------------------------------
 
@@ -41,6 +41,19 @@ data KademliaConfig
     { configK               :: !Int
       -- ^ Queries use the @k@ nearest heighbours; this is that @k@.
       --   This is defined as a constant in the paper.
+      --
+      --   FIXME: this should be a type of positive numbers
+    , configExpirationTime  :: !Int
+      -- ^ We delete a value after @configExpirationTime@ seconds has passed.
+      --
+      --   FIXME: this should have higher resolution than seconds.
+      --
+      --   FIXME: this should be a type of positive numbers
+    , configStoreValueTime  :: !Int
+      -- ^ We store all values stored in the node in the @k@ closest known nodes
+      --   every @configStoreValueTime@ seconds.
+      --
+      --   FIXME: this should have higher resolution than seconds.
       --
       --   FIXME: this should be a type of positive numbers
     , configPingTime        :: !Int
@@ -96,6 +109,8 @@ defaultConfig :: KademliaConfig
 defaultConfig
   = KademliaConfig
     { configK               = defaultK
+    , configExpirationTime  = hour 1
+    , configStoreValueTime  = hour 1
     , configPingTime        = minute 5
     , configNumLookupNodes  = 3
     , configMsgSizeLimit    = 1200
