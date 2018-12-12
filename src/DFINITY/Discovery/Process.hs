@@ -17,11 +17,12 @@ module DFINITY.Discovery.Process
 
 --------------------------------------------------------------------------------
 
-import           Control.Concurrent           (ThreadId, forkIO, killThread)
+import           Control.Concurrent
+                 (ThreadId, forkIO, killThread, myThreadId)
 import           Control.Concurrent.Chan      (Chan, readChan)
 import           Control.Concurrent.STM       (atomically, readTVar, writeTVar)
 import           Control.Exception            (catch)
-import           Control.Monad                (forM_, forever, when)
+import           Control.Monad                (forM_, forever, void, when)
 import           Control.Monad.Extra          (unlessM)
 import           Control.Monad.IO.Class       (liftIO)
 import           Data.Map.Strict              (Map)
@@ -115,11 +116,7 @@ receivingProcessDo inst reply rq = do
     -- Store values in newly encountered nodes that you are the closest to
     Answer (Signal node _) -> do
       let originId = nodeId node
-      let peerId = nodePeer node
-
-      let retrieve      f = atomically (readTVar (f (instanceState inst)))
-      let retrieveMaybe f = maybe (pure mempty) (atomically . readTVar)
-                            (f (instanceState inst))
+      let retrieve f = atomically (readTVar (f (instanceState inst)))
 
       -- If peer is banned, ignore
       unlessM (isNodeBanned inst (nodePeer node)) $ do
@@ -132,13 +129,12 @@ receivingProcessDo inst reply rq = do
           let self         = node { nodeId = ownId }
           let bucket       = self:closestKnown
           -- Find out closest known node
-          let closestId    = nodeId (head (sortByDistanceTo bucket originId
-                                           `usingConfig` cfg))
+          let closestId    = nodeId (head (sortByDistanceTo bucket originId `usingConfig` cfg))
 
 
           -- This node can be assumed to be closest to the new node
           when (ownId == closestId) $ do
-            storedValues <- Map.toList <$> retrieveMaybe stateValues
+            storedValues <- Map.toList <$> retrieve stateValues
             -- Store all stored values in the new node
             forM_ storedValues (send h (nodePeer node) . uncurry STORE)
         dispatch reply rq
@@ -200,7 +196,7 @@ pingProcess inst chan = do
 spreadValueProcess
     :: (Serialize i)
     => KademliaInstance i a -> IO ()
-spreadValueProcess  = do
+spreadValueProcess inst = do
   let (KademliaInstance _ h state _ cfg) = inst
   let (KademliaState sTree _ sValues) = state
   forever $ (`catch` handleLogError' h) $ void $ do
@@ -213,11 +209,9 @@ spreadValueProcess  = do
     let mapMWithKey_ :: (k -> v -> IO a) -> Map k v -> IO ()
         mapMWithKey_ f m = mapM_ snd (Map.toList (Map.mapWithKey f m))
 
-    case sValues of
-      Nothing        -> return ()
-      Just valueVars -> do values <- atomically (readTVar valueVars)
-                           tree   <- atomically (readTVar sTree)
-                           mapMWithKey_ (sendRequests tree) values
+    values <- atomically (readTVar sValues)
+    tree   <- atomically (readTVar sTree)
+    mapMWithKey_ (sendRequests tree) values
 
 -- | Delete a value after a certain amount of time has passed
 expirationProcess :: (Ord i) => KademliaInstance i a -> i -> IO ()
@@ -266,6 +260,7 @@ handleCommand cmd peer inst
         case result of
           Just value -> liftIO $ send h peer (RETURN_VALUE key value)
           Nothing    -> returnNodes peer key inst
+      (RETURN_VALUE _ _)   -> pure ()
 
 -- | Return a KBucket with the closest Nodes to a supplied Id
 returnNodes
@@ -276,7 +271,7 @@ returnNodes
   -> IO ()
 returnNodes peer nid inst = do
   let (KademliaInstance ourNode h state _ cfg) = inst
-  let (KademliaState sTree _) = state
+  let (KademliaState sTree _ _) = state
   let (KademliaConfig {..}) = cfg
   tree <- atomically (readTVar sTree)
   rndGen <- newStdGen
@@ -308,7 +303,7 @@ timeoutNode
   => KademliaInstance i a
   -> Peer
   -> IO Bool
-timeoutNode (KademliaInstance _ _ (KademliaState sTree _) _ cfg) peer = do
+timeoutNode (KademliaInstance _ _ (KademliaState sTree _ _) _ cfg) peer = do
   currentTime <- floor <$> getPOSIXTime
   atomically $ do
     tree <- readTVar sTree

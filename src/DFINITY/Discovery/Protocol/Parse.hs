@@ -39,8 +39,8 @@ import qualified Data.Text                  as Text
 import qualified Data.Text.Encoding         as Text
 
 import           DFINITY.Discovery.Types
-                 (Command (FIND_NODE, PING, PONG, RETURN_NODES), Node (Node),
-                 Peer (Peer), Serialize (fromBS), Signal (Signal))
+                 (Command (..), Node (Node), Peer (Peer), Serialize (fromBS),
+                 Signal (Signal))
 
 --------------------------------------------------------------------------------
 

@@ -210,7 +210,7 @@ createLFromSnapshot
   -> (Text, Word16)
   -- ^ External address
   -> KademliaConfig
-  -> KademliaSnapshot i
+  -> KademliaSnapshot i a
   -> (String -> IO ())
   -> (String -> IO ())
   -> IO (KademliaInstance i a)

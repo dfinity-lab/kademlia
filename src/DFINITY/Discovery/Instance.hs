@@ -43,13 +43,13 @@ import           Control.Concurrent           (ThreadId)
 import qualified Control.Concurrent.STM       as STM
 import           Control.Monad                (unless)
 import           Data.Time.Clock.POSIX        (POSIXTime, getPOSIXTime)
-import           Data.Word                    (Word16)
 import           GHC.Generics                 (Generic)
 
 import           Data.Map.Lazy                (Map)
 import qualified Data.Map.Lazy                as Map
 
 import           Data.Text                    (Text)
+import           Data.Word                    (Word16)
 
 import           DFINITY.Discovery.Config
                  (KademliaConfig, defaultConfig, usingConfig)
@@ -98,11 +98,11 @@ data BanState
 -- Representation of the data the 'KademliaProcess' carries.
 data KademliaState i a
   = KademliaState
-    { stateTree   :: !(TVar (T.NodeTree i))
+    { stateTree   :: !(STM.TVar (T.NodeTree i))
       -- ^ FIXME: doc
-    , stateBanned :: !(TVar (Map Peer BanState))
+    , stateBanned :: !(STM.TVar (Map Peer BanState))
       -- ^ FIXME: doc
-    , stateValues :: !(Maybe (TVar (Map i a)))
+    , stateValues :: !(STM.TVar (Map i a))
       -- ^ FIXME: doc
     }
   deriving ()
@@ -111,11 +111,13 @@ data KademliaState i a
 
 -- |
 -- FIXME: doc
-data KademliaSnapshot i
+data KademliaSnapshot i a
   = KademliaSnapshot
     { snapshotTree   :: !(T.NodeTree i)
       -- ^ FIXME: doc
     , snapshotBanned :: !(Map Peer BanState)
+      -- ^ FIXME: doc
+    , snapshotValues :: !(Map i a)
       -- ^ FIXME: doc
     }
   deriving (Generic)
@@ -135,8 +137,10 @@ newInstance nid (extHost, extPort) cfg handle = do
   tree    <- STM.atomically $ STM.newTVar (T.create nid `usingConfig` cfg)
   banned  <- STM.atomically $ STM.newTVar Map.empty
   threads <- STM.atomically $ STM.newTVar Map.empty
+  values  <- STM.atomically $ STM.newTVar Map.empty
   let ownNode = Node (Peer extHost (fromIntegral extPort)) nid
-  pure $ KademliaInstance ownNode handle (KademliaState tree banned) threads cfg
+  let state = KademliaState tree banned values
+  pure $ KademliaInstance ownNode handle state threads cfg
 
 --------------------------------------------------------------------------------
 
@@ -149,7 +153,7 @@ insertNode
   -> IO ()
 insertNode inst node = do
   let (KademliaInstance _ _ state _ cfg) = inst
-  let (KademliaState sTree _) = state
+  let (KademliaState sTree _ _) = state
   currentTime <- floor <$> getPOSIXTime
   isBanned <- isNodeBanned inst (nodePeer node)
   unless isBanned $ do
@@ -168,7 +172,7 @@ lookupNode
   -> IO (Maybe (Node i))
 lookupNode inst nid = do
   let (KademliaInstance _ _ state _ cfg) = inst
-  let (KademliaState sTree _) = state
+  let (KademliaState sTree _ _) = state
   tree <- STM.atomically (STM.readTVar sTree)
   pure $ T.lookup tree nid `usingConfig` cfg
 
@@ -183,7 +187,7 @@ lookupNodeByPeer
   -> IO (Maybe (Node i))
 lookupNodeByPeer inst peer = do
   let (KademliaInstance _ _ state _ cfg) = inst
-  let (KademliaState sTree _) = state
+  let (KademliaState sTree _ _) = state
   tree <- STM.atomically (STM.readTVar sTree)
   pure (do nid <- Map.lookup peer (T.nodeTreePeers tree)
            T.lookup tree nid `usingConfig` cfg)
@@ -197,7 +201,7 @@ dumpPeers
   -> IO [(Node i, Timestamp)]
 dumpPeers inst = do
   let (KademliaInstance _ _ state _ _) = inst
-  let (KademliaState sTree _) = state
+  let (KademliaState sTree _ _) = state
   currentTime <- floor <$> getPOSIXTime
   STM.atomically $ do
     tree <- STM.readTVar sTree
@@ -215,12 +219,9 @@ insertValue
   -> IO ()
 insertValue key value inst = do
   let (KademliaInstance _ _ state _ _) = inst
-  let (KademliaState _ _ maybeValues) = state
-  case maybeValues of
-    Just values -> do atomically $ do
-                        vals <- readTVar values
-                        writeTVar values (Map.insert key value vals)
-    Nothing     -> pure ()
+  let (KademliaState _ _ values) = state
+  STM.atomically $ do
+    STM.modifyTVar' values (Map.insert key value)
 
 --------------------------------------------------------------------------------
 
@@ -233,12 +234,9 @@ deleteValue
   -> IO ()
 deleteValue key inst = do
   let (KademliaInstance _ _ state _ _) = inst
-  let (KademliaState _ _ maybeValues) = state
-  case maybeValues of
-    Just values -> do atomically $ do
-                        vals <- readTVar values
-                        writeTVar values (Map.delete key vals)
-    Nothing     -> pure ()
+  let (KademliaState _ _ values) = state
+  STM.atomically $ do
+    STM.modifyTVar' values (Map.delete key)
 
 --------------------------------------------------------------------------------
 
@@ -251,12 +249,9 @@ lookupValue
   -> IO (Maybe a)
 lookupValue key inst = do
   let (KademliaInstance _ _ state _ _) = inst
-  let (KademliaState _ _ maybeValues) = state
-  case maybeValues of
-    Just values -> do atomically $ do
-                        vals <- readTVar values
-                        pure (Map.lookup key vals)
-    Nothing     -> pure Nothing
+  let (KademliaState _ _ values) = state
+  STM.atomically $ do
+    Map.lookup key <$> STM.readTVar values
 
 --------------------------------------------------------------------------------
 
@@ -269,7 +264,7 @@ isNodeBanned
   -> IO Bool
 isNodeBanned inst peer = do
   let (KademliaInstance _ _ state _ _) = inst
-  let (KademliaState _ banned) = state
+  let (KademliaState _ banned _) = state
 
   let isBanned NoBan         = pure False
       isBanned BanForever    = pure True
@@ -296,7 +291,7 @@ banNode
   -> IO ()
 banNode inst node ban = STM.atomically $ do
   let (KademliaInstance _ _ state _ cfg) = inst
-  let (KademliaState sTree banned) = state
+  let (KademliaState sTree banned _) = state
   STM.modifyTVar banned $ Map.insert (nodePeer node) ban
   STM.modifyTVar sTree $ \t -> T.delete t (nodePeer node) `usingConfig` cfg
 
@@ -306,11 +301,12 @@ banNode inst node ban = STM.atomically $ do
 -- Take a snapshot of the given 'KademliaState'.
 takeSnapshot'
   :: KademliaState i a
-  -> IO (KademliaSnapshot i)
-takeSnapshot' (KademliaState tree banned) = do
+  -> IO (KademliaSnapshot i a)
+takeSnapshot' (KademliaState tree banned values) = do
   STM.atomically $ do
     snapshotTree   <- STM.readTVar tree
     snapshotBanned <- STM.readTVar banned
+    snapshotValues <- STM.readTVar values
     pure (KademliaSnapshot {..})
 
 --------------------------------------------------------------------------------
@@ -319,7 +315,7 @@ takeSnapshot' (KademliaState tree banned) = do
 -- Take a snapshot of the 'KademliaState' for the given 'KademliaInstance'.
 takeSnapshot
   :: KademliaInstance i a
-  -> IO (KademliaSnapshot i)
+  -> IO (KademliaSnapshot i a)
 takeSnapshot = takeSnapshot' . instanceState
 
 --------------------------------------------------------------------------------
@@ -331,7 +327,7 @@ restoreInstance
   => (Text, Word16)
   -> KademliaConfig
   -> KademliaHandle i a
-  -> KademliaSnapshot i
+  -> KademliaSnapshot i a
   -> IO (KademliaInstance i a)
 restoreInstance extAddr cfg handle snapshot = do
   let nid = T.extractId (snapshotTree snapshot) `usingConfig` cfg
@@ -353,7 +349,7 @@ viewBuckets
   -> IO [[(Node i, Timestamp)]]
 viewBuckets inst = do
   let (KademliaInstance _ _ state _ _) = inst
-  let (KademliaState sTree _) = state
+  let (KademliaState sTree _ _) = state
   currentTime <- floor <$> getPOSIXTime
   map (map (second (currentTime -))) <$> T.toView <$> STM.readTVarIO sTree
 
@@ -365,7 +361,7 @@ peersToNodeIds
   -> IO [Maybe (Node i)]
 peersToNodeIds inst peers = do
   let (KademliaInstance _ _ state _ _) = inst
-  let (KademliaState sTree _) = state
+  let (KademliaState sTree _ _) = state
   knownPeers <- T.nodeTreePeers <$> STM.atomically (STM.readTVar sTree)
   pure $ zipWith (fmap . Node) peers $ map (`Map.lookup` knownPeers) peers
 

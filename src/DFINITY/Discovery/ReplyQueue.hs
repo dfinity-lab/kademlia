@@ -1,5 +1,9 @@
 --------------------------------------------------------------------------------
 
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+
+--------------------------------------------------------------------------------
+
 -- |
 -- Module:      DFINITY.Discovery.ReplyQueue
 -- Description: A queue allowing to register handlers for expected replies
@@ -36,7 +40,7 @@ import           Data.List               (delete, find)
 import           Data.Maybe              (isJust)
 
 import           DFINITY.Discovery.Types
-                 (Command (PONG, RETURN_NODES), Node (nodePeer), Peer,
+                 (Command (..), Node (nodePeer), Peer,
                  Signal (signalCommand, signalSource))
 import           DFINITY.Discovery.Utils (threadDelay)
 
