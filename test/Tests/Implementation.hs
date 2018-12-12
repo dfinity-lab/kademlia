@@ -13,8 +13,7 @@
 --------------------------------------------------------------------------------
 
 module Tests.Implementation
-  ( idClashCheck
-  , joinCheck
+  ( joinCheck
   , joinFullCheck
   , lookupNodesCheck
   , nodeDownCheck
@@ -92,37 +91,6 @@ joinFullCheck
   -> Property
 joinFullCheck = joinNetworkVerifier (defaultK + defaultRoutingSharingN)
 -- FIXME: this is broken
-
---------------------------------------------------------------------------------
-
--- | Make sure ID clashes are detected properly
-idClashCheck
-  :: IdType
-  -> IdType
-  -> Property
-idClashCheck idA idB = monadicIO $ do
--- FIXME: this is broken
-  let _ = map (Peer "127.0.0.1") [1123..]
-      ids = [idA, idB, idA]
-      entryNode = Node (Peer "127.0.0.1" 1124) idB
-
-  joinResult <- run $ do
-    insts@[kiA, _, kiB] <- zipWithM
-                           (\p -> K.create
-                                  ("127.0.0.1", p)
-                                  ("127.0.0.1", p))
-                           [1123..]
-                           ids
-                           :: IO [KademliaInstance IdType String]
-
-    _          <- K.joinNetwork kiA (nodePeer entryNode)
-    joinResult <- K.joinNetwork kiB (nodePeer entryNode)
-
-    mapM_ K.close insts
-
-    pure joinResult
-
-  assert (joinResult == K.IDClash)
 
 --------------------------------------------------------------------------------
 
