@@ -33,24 +33,19 @@ module DFINITY.Discovery.Types
 
 --------------------------------------------------------------------------------
 
-import           Data.Bits                (setBit, testBit, zeroBits)
-import           Data.Function            (on)
-import           Data.Int                 (Int64)
-import           Data.List                (sortBy)
-import           Data.Word                (Word16, Word8)
-import           GHC.Generics             (Generic)
-import           Network.Socket
-                 (PortNumber (..), SockAddr (..), inet_ntoa)
+import           Data.Bits       (setBit, testBit, zeroBits)
+import           Data.Function   (on)
+import           Data.Int        (Int64)
+import           Data.List       (sortBy)
+import           Data.Word       (Word16, Word8)
+import           GHC.Generics    (Generic)
+import           Network.Socket  (PortNumber (..), SockAddr (..))
 
-import           Data.ByteString          (ByteString)
-import qualified Data.ByteString          as BS
+import           Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
 
-
-import           Data.IP                  (IP)
-import qualified Data.IP                  as IP
-
-import           DFINITY.Discovery.Config (WithConfig, getConfig)
-import qualified DFINITY.Discovery.Config as C
+import           Data.IP         (IP)
+import qualified Data.IP         as IP
 
 --------------------------------------------------------------------------------
 
