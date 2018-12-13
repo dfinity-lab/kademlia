@@ -55,8 +55,8 @@ import           DFINITY.Discovery.Types
 -- | Lookup the value corresponding to a key in the DHT and return it, together
 --   with the Node that was the first to answer the lookup
 lookup
-    :: (Serialize i, Serialize a, Ord i)
-    => KademliaInstance i a -> i -> IO (Maybe (a, Node i))
+  :: (Serialize i, Serialize a, Ord i)
+  => KademliaInstance i a -> i -> IO (Maybe (a, Node i))
 lookup inst nid = runLookup go inst nid
   where
     go = startLookup (instanceConfig inst) sendS cancel checkSignal
@@ -111,10 +111,12 @@ lookup inst nid = runLookup go inst nid
         finish
     finishCheck _ = finish
 
+--------------------------------------------------------------------------------
+
 -- | Store assign a value to a key and store it in the DHT
 store
-    :: (Serialize i, Serialize a, Ord i)
-    => KademliaInstance i a -> i -> a -> IO ()
+  :: (Serialize i, Serialize a, Ord i)
+  => KademliaInstance i a -> i -> a -> IO ()
 store inst key val = runLookup go inst key
   where
     go = startLookup (instanceConfig inst) sendS end checkSignal
@@ -149,6 +151,8 @@ store inst key val = runLookup go inst key
             -- Send them a STORE command
             forM_ storePeers $
                 \storePeer -> liftIO . send h storePeer . STORE key $ val
+
+--------------------------------------------------------------------------------
 
 -- | The different possible results of joinNetwork
 data JoinResult
