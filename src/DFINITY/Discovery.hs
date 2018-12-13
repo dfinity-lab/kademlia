@@ -148,8 +148,6 @@ module DFINITY.Discovery
 
 --------------------------------------------------------------------------------
 
-import           Data.Word                        (Word16)
-
 import           Data.IP                          (IP)
 import           Network.Socket                   (PortNumber)
 

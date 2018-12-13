@@ -23,7 +23,7 @@ module Tests.Tree
 
 --------------------------------------------------------------------------------
 
-import           Control.Monad            (filterM, forM, join)
+import           Control.Monad            (filterM, join)
 import           Data.Foldable            (foldrM)
 import           Data.Function            (on)
 import           Data.List                (sort, sortBy)
