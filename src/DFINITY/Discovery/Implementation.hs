@@ -288,7 +288,7 @@ runLookup lookupM inst nid = do
 -- The initial phase of the normal Kademlia lookup operation
 startLookup
   :: (Serialize i, Serialize a, Ord i)
-  => KademliaConfig
+  => KademliaConfig i
   -> (Node i -> LookupM i a ())
   -> LookupM i a b
   -> (Signal i a -> LookupM i a b)

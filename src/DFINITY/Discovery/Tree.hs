@@ -117,7 +117,7 @@ type NodeTreeFunction i a
     -> Map Peer i
     -> NodesWithPing i
     -> NodeCache i
-    -> WithConfig a
+    -> WithConfig i a
 
 -- FIXME: doc
 type Depth = Int
@@ -139,7 +139,7 @@ lookup
      (Serialize i, Eq i)
   => NodeTree i
   -> i
-  -> WithConfig (Maybe (Node i))
+  -> WithConfig i (Maybe (Node i))
 lookup tree nid
   = let f :: NodeTreeFunction i (Maybe (Node i))
         f _ _ _ nodes _ = pure $ List.find (idMatches nid) (map fst nodes)
@@ -154,7 +154,7 @@ delete
      (Serialize i, Eq i)
   => NodeTree i
   -> Peer
-  -> WithConfig (NodeTree i)
+  -> WithConfig i (NodeTree i)
 delete tree peer
   = let f :: i -> NodeTreeFunction i (NodeTreeElem i, Map Peer i)
         f nid _ _ peers nodes cache
@@ -175,7 +175,7 @@ handleTimeout
   => Timestamp
   -> NodeTree i
   -> Peer
-  -> WithConfig (NodeTree i, Bool)
+  -> WithConfig i (NodeTree i, Bool)
 handleTimeout currentTime tree peer = do
   case Map.lookup peer (nodeTreePeers tree) of
     Nothing    -> pure (tree, False)
@@ -233,7 +233,7 @@ insert
   => NodeTree i
   -> Node i
   -> Timestamp
-  -> WithConfig (NodeTree i)
+  -> WithConfig i (NodeTree i)
 insert tree node currentTime = do
   let (Node { nodeId = nid, .. }) = node
   k <- configK <$> getConfig
@@ -308,7 +308,7 @@ insert tree node currentTime = do
 -- |
 -- Split the k-bucket the specified ID would reside in into two and return
 -- a @('Split' … …) :: 'NodeTreeElem' i@ wrapped in a 'NodeTree'.
-split :: (Serialize i) => NodeTree i -> i -> WithConfig (NodeTree i)
+split :: (Serialize i) => NodeTree i -> i -> WithConfig i (NodeTree i)
 split tree splitId = modifyAt tree splitId g
   where
     g depth _ peers nodes cache = do
@@ -360,7 +360,7 @@ findClosest
   => NodeTree i
   -> i
   -> Int
-  -> WithConfig [Node i]
+  -> WithConfig i [Node i]
 findClosest (NodeTree idStruct treeElem _) nid n = do
   let chooseClosest :: [Node i] -> [Node i]
       chooseClosest nodes = take n (sortByDistanceTo nodes nid)
@@ -369,7 +369,7 @@ findClosest (NodeTree idStruct treeElem _) nid n = do
 
   -- This function is partial for the same reason as in 'modifyAt'.
   let go :: ByteStruct -> ByteStruct -> NodeTreeElem i
-         -> WithConfig [Node i]
+         -> WithConfig i [Node i]
       go is ts el = do
         case (is, ts, el) of
           -- Take the @n@ closest nodes.
@@ -452,7 +452,7 @@ modifyAt
   => NodeTree i
   -> i
   -> NodeTreeFunction i (NodeTreeElem i, Map Peer i)
-  -> WithConfig (NodeTree i)
+  -> WithConfig i (NodeTree i)
 modifyAt tree nid f
   = let md1 (x, y) = (x, y, ())
     in fst <$> modifyApplyAt tree nid (\a b c d e -> md1 <$> f a b c d e)
@@ -467,13 +467,13 @@ applyAt
   => NodeTree i
   -> i
   -> NodeTreeFunction i a
-  -> WithConfig a
+  -> WithConfig i a
 applyAt (NodeTree idStruct treeElem peers) nid f = do
   -- FIXME: combine left and right clauses in `go`
 
   -- This function is partial for the same reason as in modifyAt
   let go :: ByteStruct -> ByteStruct -> Depth -> Validity -> NodeTreeElem i
-         -> WithConfig a
+         -> WithConfig i a
       go is ts depth valid el = do
         case (is, ts, el) of
           -- Apply the function
@@ -502,7 +502,7 @@ modifyApplyAt
   => NodeTree i
   -> i
   -> NodeTreeFunction i (NodeTreeElem i, Map Peer i, a)
-  -> WithConfig (NodeTree i, a)
+  -> WithConfig i (NodeTree i, a)
 modifyApplyAt (NodeTree idStruct treeElem peers) nid f = do
   -- FIXME: combine left and right clauses in `go`
 
@@ -510,7 +510,7 @@ modifyApplyAt (NodeTree idStruct treeElem peers) nid f = do
   -- bucket at the end. Therefore, we don't have to check for empty
   -- ByteStructs.
   let go :: ByteStruct -> ByteStruct -> Depth -> Validity -> NodeTreeElem i
-         -> WithConfig (NodeTreeElem i, Map Peer i, a)
+         -> WithConfig i (NodeTreeElem i, Map Peer i, a)
       go is ts depth valid el = do
         case (is, ts, el) of
           -- Apply the function to the position of the bucket

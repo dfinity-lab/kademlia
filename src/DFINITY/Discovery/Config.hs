@@ -26,17 +26,19 @@ module DFINITY.Discovery.Config
 
 --------------------------------------------------------------------------------
 
-import           Control.Monad.Identity  (Identity, runIdentity)
-import           Control.Monad.Reader    (ReaderT, ask, runReaderT)
-import           Control.Monad.Trans     (MonadTrans)
-import           DFINITY.Discovery.Utils (hour, minute)
+import           Control.Monad.Identity      (Identity, runIdentity)
+import           Control.Monad.Reader        (ReaderT, ask, runReaderT)
+import           Control.Monad.Trans         (MonadTrans)
+import           DFINITY.Discovery.Signature
+                 (SignatureScheme, trivialSignatureScheme)
+import           DFINITY.Discovery.Utils     (hour, minute)
 
 --------------------------------------------------------------------------------
 
 -- |
 -- This type encompasses all configuration parameters for a running Kademlia
 -- instance.
-data KademliaConfig
+data KademliaConfig i
   = KademliaConfig
     { configK               :: !Int
       -- ^ Queries use the @k@ nearest heighbours; this is that @k@.
@@ -91,8 +93,9 @@ data KademliaConfig
       --   out from its bucket.
       --
       --   FIXME: this should be a type of positive numbers
+    , configSignatureScheme :: !(SignatureScheme IO i)
+      -- ^ FIXME: doc
     }
-  deriving (Eq, Show, Read)
 
 --------------------------------------------------------------------------------
 
@@ -105,7 +108,7 @@ defaultRoutingSharingN :: Int
 defaultRoutingSharingN = uncurry (+) $ defaultK `divMod` 2
 
 -- | FIXME: doc
-defaultConfig :: KademliaConfig
+defaultConfig :: KademliaConfig i
 defaultConfig
   = KademliaConfig
     { configK               = defaultK
@@ -117,35 +120,36 @@ defaultConfig
     , configRoutingSharingN = defaultRoutingSharingN
     , configCacheSize       = 5
     , configPingLimit       = 4
+    , configSignatureScheme = trivialSignatureScheme
     }
 
 --------------------------------------------------------------------------------
 
 -- |
 -- A monad transformer that gives access to a 'KademliaConfig'.
-newtype WithConfigT m a
+newtype WithConfigT i m a
   = WithConfigT
-    { getWithConfigT :: ReaderT KademliaConfig m a
+    { getWithConfigT :: ReaderT (KademliaConfig i) m a
     }
   deriving (Functor, Applicative, Monad, MonadTrans)
 
 --------------------------------------------------------------------------------
 
 -- | FIXME: doc
-type WithConfig a = WithConfigT Identity a
+type WithConfig i a = WithConfigT i Identity a
 
 --------------------------------------------------------------------------------
 
 -- | FIXME: doc
-getConfig :: Monad m => WithConfigT m KademliaConfig
+getConfig :: Monad m => WithConfigT i m (KademliaConfig i)
 getConfig = WithConfigT ask
 
 -- | FIXME: doc
-usingConfigT :: WithConfigT m a -> KademliaConfig -> m a
+usingConfigT :: WithConfigT i m a -> KademliaConfig i -> m a
 usingConfigT f cfg = flip runReaderT cfg $ getWithConfigT f
 
 -- | FIXME: doc
-usingConfig :: WithConfig a -> KademliaConfig -> a
+usingConfig :: WithConfig i a -> KademliaConfig i -> a
 usingConfig f cfg = runIdentity $ usingConfigT f cfg
 
 --------------------------------------------------------------------------------
