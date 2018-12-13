@@ -46,6 +46,7 @@ library
                        DFINITY.Discovery.Tree
                        DFINITY.Discovery.Types
                        DFINITY.Discovery.Utils
+                       DFINITY.Discovery.Signature
 
   build-depends:       base                 >= 4.7 && < 5
                      , bytestring           >= 0.10.2 && < 0.11
