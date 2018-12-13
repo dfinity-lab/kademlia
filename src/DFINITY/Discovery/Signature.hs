@@ -1,7 +1,6 @@
 --------------------------------------------------------------------------------
 
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE GADTSyntax                #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 --------------------------------------------------------------------------------
 
@@ -21,12 +20,15 @@ module DFINITY.Discovery.Signature
 
 --------------------------------------------------------------------------------
 
+import           GHC.Generics    (Generic)
+
 import           Data.ByteString (ByteString)
 
 --------------------------------------------------------------------------------
 
 newtype Signature
   = Signature { fromSignature :: ByteString }
+  deriving (Eq, Ord, Show, Read, Generic)
 
 --------------------------------------------------------------------------------
 

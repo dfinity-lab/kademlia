@@ -72,7 +72,7 @@ data KademliaInstance i a
       -- ^ FIXME: doc
     , instanceExpirationThreads :: !(STM.TVar (Map i ThreadId))
       -- ^ FIXME: doc
-    , instanceConfig            :: !KademliaConfig
+    , instanceConfig            :: !(KademliaConfig i)
       -- ^ FIXME: doc
     }
   deriving ()
@@ -130,7 +130,7 @@ newInstance
   :: (Serialize i)
   => i
   -> (IP, PortNumber)
-  -> KademliaConfig
+  -> KademliaConfig i
   -> KademliaHandle i a
   -> IO (KademliaInstance i a)
 newInstance nid (extHost, extPort) cfg handle = do
@@ -325,7 +325,7 @@ takeSnapshot = takeSnapshot' . instanceState
 restoreInstance
   :: (Serialize i)
   => (IP, PortNumber)
-  -> KademliaConfig
+  -> KademliaConfig i
   -> KademliaHandle i a
   -> KademliaSnapshot i a
   -> IO (KademliaInstance i a)

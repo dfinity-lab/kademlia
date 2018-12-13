@@ -186,7 +186,7 @@ createL
   -> (IP, PortNumber)
   -- ^ External address
   -> i
-  -> KademliaConfig
+  -> KademliaConfig i
   -> (String -> IO ())
   -> (String -> IO ())
   -> IO (KademliaInstance i a)
@@ -207,7 +207,7 @@ createLFromSnapshot
   -- ^ Bind address
   -> (IP, PortNumber)
   -- ^ External address
-  -> KademliaConfig
+  -> KademliaConfig i
   -> KademliaSnapshot i a
   -> (String -> IO ())
   -> (String -> IO ())
@@ -233,7 +233,7 @@ close = closeK . instanceHandle
 
 -- | Run 'WithConfig' action using the given 'KademliaInstance'.
 usingKademliaInstance
-  :: WithConfig a
+  :: WithConfig i a
   -> KademliaInstance i v
   -> a
 usingKademliaInstance f = usingConfig f . instanceConfig

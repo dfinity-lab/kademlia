@@ -44,7 +44,7 @@ import           Tests.TestTypes          (IdType (..), NodeBunch (..))
 
 --------------------------------------------------------------------------------
 
-usingDefaultConfig :: WithConfig a -> a
+usingDefaultConfig :: WithConfig i a -> a
 usingDefaultConfig = flip usingConfig defaultConfig
 
 -- | Helper method for lookup checking
@@ -72,7 +72,7 @@ deleteCheck nid node = usingDefaultConfig $ do
     tree <- T.delete origin (nodePeer node)
     pure (not (lookupCheck tree node))
 
-withTree :: (T.NodeTree IdType -> [Node IdType] -> WithConfig a) ->
+withTree :: (T.NodeTree IdType -> [Node IdType] -> WithConfig IdType a) ->
             NodeBunch IdType -> IdType -> a
 withTree f bunch nid = usingDefaultConfig $ do
     let timestamp = 0 :: Timestamp
