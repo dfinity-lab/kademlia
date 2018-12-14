@@ -56,23 +56,23 @@ import           DFINITY.Discovery.Config
 import           DFINITY.Discovery.Networking (KademliaHandle)
 import qualified DFINITY.Discovery.Tree       as T
 import           DFINITY.Discovery.Types
-                 (Node (Node, nodePeer), Peer (Peer), Serialize, Timestamp)
+                 (Ident, Node (Node, nodePeer), Peer (Peer), Timestamp, Value)
 
 --------------------------------------------------------------------------------
 
 -- |
 -- The handle of a running Kademlia node.
-data KademliaInstance i a
+data KademliaInstance
   = KademliaInstance
-    { instanceNode              :: !(Node i)
+    { instanceNode              :: !Node
       -- ^ FIXME: doc
-    , instanceHandle            :: !(KademliaHandle i a)
+    , instanceHandle            :: !KademliaHandle
       -- ^ FIXME: doc
-    , instanceState             :: !(KademliaState i a)
+    , instanceState             :: !KademliaState
       -- ^ FIXME: doc
-    , instanceExpirationThreads :: !(STM.TVar (Map i ThreadId))
+    , instanceExpirationThreads :: !(STM.TVar (Map Ident ThreadId))
       -- ^ FIXME: doc
-    , instanceConfig            :: !(KademliaConfig i)
+    , instanceConfig            :: !KademliaConfig
       -- ^ FIXME: doc
     }
   deriving ()
@@ -96,13 +96,13 @@ data BanState
 
 -- |
 -- Representation of the data the 'KademliaProcess' carries.
-data KademliaState i a
+data KademliaState
   = KademliaState
-    { stateTree   :: !(STM.TVar (T.NodeTree i))
+    { stateTree   :: !(STM.TVar T.NodeTree)
       -- ^ FIXME: doc
     , stateBanned :: !(STM.TVar (Map Peer BanState))
       -- ^ FIXME: doc
-    , stateValues :: !(STM.TVar (Map i a))
+    , stateValues :: !(STM.TVar (Map Ident Value))
       -- ^ FIXME: doc
     }
   deriving ()
@@ -111,13 +111,13 @@ data KademliaState i a
 
 -- |
 -- FIXME: doc
-data KademliaSnapshot i a
+data KademliaSnapshot
   = KademliaSnapshot
-    { snapshotTree   :: !(T.NodeTree i)
+    { snapshotTree   :: !T.NodeTree
       -- ^ FIXME: doc
     , snapshotBanned :: !(Map Peer BanState)
       -- ^ FIXME: doc
-    , snapshotValues :: !(Map i a)
+    , snapshotValues :: !(Map Ident Value)
       -- ^ FIXME: doc
     }
   deriving (Generic)
@@ -127,12 +127,11 @@ data KademliaSnapshot i a
 -- |
 -- Create a new 'KademliaInstance' from an ID and a 'KademliaHandle'.
 newInstance
-  :: (Serialize i)
-  => i
+  :: Ident
   -> (IP, PortNumber)
-  -> KademliaConfig i
-  -> KademliaHandle i a
-  -> IO (KademliaInstance i a)
+  -> KademliaConfig
+  -> KademliaHandle
+  -> IO KademliaInstance
 newInstance nid (extHost, extPort) cfg handle = do
   tree    <- STM.atomically $ STM.newTVar (T.create nid)
   banned  <- STM.atomically $ STM.newTVar Map.empty
@@ -147,9 +146,8 @@ newInstance nid (extHost, extPort) cfg handle = do
 -- |
 -- Insert a 'Node' into the 'NodeTree'.
 insertNode
-  :: (Serialize i, Ord i)
-  => KademliaInstance i a
-  -> Node i
+  :: KademliaInstance
+  -> Node
   -> IO ()
 insertNode inst node = do
   let (KademliaInstance _ _ state _ cfg) = inst
@@ -166,10 +164,9 @@ insertNode inst node = do
 -- |
 -- Lookup a 'Node' in the 'NodeTree'.
 lookupNode
-  :: (Serialize i, Ord i)
-  => KademliaInstance i a
-  -> i
-  -> IO (Maybe (Node i))
+  :: KademliaInstance
+  -> Ident
+  -> IO (Maybe Node)
 lookupNode inst nid = do
   let (KademliaInstance _ _ state _ cfg) = inst
   let (KademliaState sTree _ _) = state
@@ -181,10 +178,9 @@ lookupNode inst nid = do
 -- |
 -- FIXME: doc
 lookupNodeByPeer
-  :: (Serialize i, Ord i)
-  => KademliaInstance i a
+  :: KademliaInstance
   -> Peer
-  -> IO (Maybe (Node i))
+  -> IO (Maybe Node)
 lookupNodeByPeer inst peer = do
   let (KademliaInstance _ _ state _ cfg) = inst
   let (KademliaState sTree _ _) = state
@@ -197,8 +193,8 @@ lookupNodeByPeer inst peer = do
 -- |
 -- Return all the Nodes an Instance has encountered so far
 dumpPeers
-  :: KademliaInstance i a
-  -> IO [(Node i, Timestamp)]
+  :: KademliaInstance
+  -> IO [(Node, Timestamp)]
 dumpPeers inst = do
   let (KademliaInstance _ _ state _ _) = inst
   let (KademliaState sTree _ _) = state
@@ -212,10 +208,9 @@ dumpPeers inst = do
 -- |
 -- Insert a value into the store.
 insertValue
-  :: (Ord i)
-  => i
-  -> a
-  -> KademliaInstance i a
+  :: Ident
+  -> Value
+  -> KademliaInstance
   -> IO ()
 insertValue key value inst = do
   let (KademliaInstance _ _ state _ _) = inst
@@ -228,9 +223,8 @@ insertValue key value inst = do
 -- |
 -- Delete a value from the store.
 deleteValue
-  :: (Ord i)
-  => i
-  -> KademliaInstance i a
+  :: Ident
+  -> KademliaInstance
   -> IO ()
 deleteValue key inst = do
   let (KademliaInstance _ _ state _ _) = inst
@@ -243,10 +237,9 @@ deleteValue key inst = do
 -- |
 -- Lookup a value in the store.
 lookupValue
-  :: (Ord i)
-  => i
-  -> KademliaInstance i a
-  -> IO (Maybe a)
+  :: Ident
+  -> KademliaInstance
+  -> IO (Maybe Value)
 lookupValue key inst = do
   let (KademliaInstance _ _ state _ _) = inst
   let (KademliaState _ _ values) = state
@@ -258,8 +251,7 @@ lookupValue key inst = do
 -- |
 -- Check whether node is banned
 isNodeBanned
-  :: (Ord i)
-  => KademliaInstance i a
+  :: KademliaInstance
   -> Peer
   -> IO Bool
 isNodeBanned inst peer = do
@@ -284,9 +276,8 @@ isNodeBanned inst peer = do
 -- |
 -- Mark node as banned
 banNode
-  :: (Serialize i, Ord i)
-  => KademliaInstance i a
-  -> Node i
+  :: KademliaInstance
+  -> Node
   -> BanState
   -> IO ()
 banNode inst node ban = STM.atomically $ do
@@ -300,8 +291,8 @@ banNode inst node ban = STM.atomically $ do
 -- |
 -- Take a snapshot of the given 'KademliaState'.
 takeSnapshot'
-  :: KademliaState i a
-  -> IO (KademliaSnapshot i a)
+  :: KademliaState
+  -> IO KademliaSnapshot
 takeSnapshot' (KademliaState tree banned values) = do
   STM.atomically $ do
     snapshotTree   <- STM.readTVar tree
@@ -314,8 +305,8 @@ takeSnapshot' (KademliaState tree banned values) = do
 -- |
 -- Take a snapshot of the 'KademliaState' for the given 'KademliaInstance'.
 takeSnapshot
-  :: KademliaInstance i a
-  -> IO (KademliaSnapshot i a)
+  :: KademliaInstance
+  -> IO KademliaSnapshot
 takeSnapshot = takeSnapshot' . instanceState
 
 --------------------------------------------------------------------------------
@@ -323,12 +314,11 @@ takeSnapshot = takeSnapshot' . instanceState
 -- |
 -- Restores instance from snapshot.
 restoreInstance
-  :: (Serialize i)
-  => (IP, PortNumber)
-  -> KademliaConfig i
-  -> KademliaHandle i a
-  -> KademliaSnapshot i a
-  -> IO (KademliaInstance i a)
+  :: (IP, PortNumber)
+  -> KademliaConfig
+  -> KademliaHandle
+  -> KademliaSnapshot
+  -> IO KademliaInstance
 restoreInstance extAddr cfg handle snapshot = do
   let nid = T.extractId (snapshotTree snapshot)
   let emptyInstance = newInstance nid extAddr cfg handle
@@ -345,8 +335,8 @@ restoreInstance extAddr cfg handle snapshot = do
 -- |
 -- Shows stored buckets, ordered by distance to this node
 viewBuckets
-  :: KademliaInstance i a
-  -> IO [[(Node i, Timestamp)]]
+  :: KademliaInstance
+  -> IO [[(Node, Timestamp)]]
 viewBuckets inst = do
   let (KademliaInstance _ _ state _ _) = inst
   let (KademliaState sTree _ _) = state
@@ -356,9 +346,9 @@ viewBuckets inst = do
 --------------------------------------------------------------------------------
 
 peersToNodeIds
-  :: KademliaInstance i a
+  :: KademliaInstance
   -> [Peer]
-  -> IO [Maybe (Node i)]
+  -> IO [Maybe Node]
 peersToNodeIds inst peers = do
   let (KademliaInstance _ _ state _ _) = inst
   let (KademliaState sTree _ _) = state

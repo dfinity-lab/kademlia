@@ -20,9 +20,11 @@ module DFINITY.Discovery.Signature
 
 --------------------------------------------------------------------------------
 
-import           Codec.Serialise (Serialise)
-import           Data.ByteString (ByteString)
-import           GHC.Generics    (Generic)
+import           Codec.Serialise         (Serialise)
+import           Data.ByteString         (ByteString)
+import           GHC.Generics            (Generic)
+
+import           DFINITY.Discovery.Types (Ident)
 
 --------------------------------------------------------------------------------
 
@@ -34,10 +36,10 @@ instance Serialise Signature
 
 --------------------------------------------------------------------------------
 
-data SignatureScheme m pub
+data SignatureScheme m
   = SignatureScheme
     { sign   :: ByteString -> m Signature
-    , verify :: pub -> Signature -> ByteString -> m Bool
+    , verify :: Ident -> Signature -> ByteString -> m Bool
     }
 
 --------------------------------------------------------------------------------
@@ -45,7 +47,7 @@ data SignatureScheme m pub
 -- |
 -- The trivial 'SignatureScheme', in which a signature is simply an empty string
 -- and verification always returns 'True'.
-trivialSignatureScheme :: (Applicative m) => SignatureScheme m any
+trivialSignatureScheme :: (Applicative m) => SignatureScheme m
 trivialSignatureScheme
   = SignatureScheme
     { sign   = \_ -> pure (Signature mempty)

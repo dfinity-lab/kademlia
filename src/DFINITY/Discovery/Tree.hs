@@ -58,17 +58,17 @@ import qualified Data.Map.Lazy            as Map
 import           DFINITY.Discovery.Config
                  (KademliaConfig (..), WithConfig, getConfig)
 import           DFINITY.Discovery.Types
-                 (ByteStruct, Node (..), Peer, Serialize (..), Timestamp,
+                 (ByteStruct, Ident, Node (..), Peer, Timestamp,
                  fromByteStruct, sortByDistanceTo, toByteStruct)
 
 --------------------------------------------------------------------------------
 
 -- | FIXME: doc
-data NodeTree i
+data NodeTree
   = NodeTree
     { nodeTreeOwnId :: !ByteStruct
-    , nodeTreeRoot  :: !(NodeTreeElem i)
-    , nodeTreePeers :: !(Map Peer i)
+    , nodeTreeRoot  :: !NodeTreeElem
+    , nodeTreePeers :: !(Map Peer Ident)
     }
   deriving (Generic)
 
@@ -85,39 +85,39 @@ newtype PingInfo
 --------------------------------------------------------------------------------
 
 -- | FIXME: doc
-data NodeTreeElem i
+data NodeTreeElem
   = -- | FIXME: doc
     Split
-    !(NodeTreeElem i)
+    !NodeTreeElem
     -- ^ FIXME: doc
-    !(NodeTreeElem i)
+    !NodeTreeElem
     -- ^ FIXME: doc
   | -- | FIXME: doc
     Bucket
-    !(NodesWithPing i)
+    !NodesWithPing
     -- ^ FIXME: doc
-    !(NodeCache i)
+    !NodeCache
     -- ^ FIXME: doc
   deriving (Generic)
 
 --------------------------------------------------------------------------------
 
 -- | FIXME: doc
-type NodeCache i = [Node i]
+type NodeCache = [Node]
 
 -- | FIXME: doc
-type NodesWithPing i = [(Node i, PingInfo)]
+type NodesWithPing = [(Node, PingInfo)]
 
 --------------------------------------------------------------------------------
 
 -- FIXME: doc
-type NodeTreeFunction i a
+type NodeTreeFunction a
   = Depth
     -> Validity
-    -> Map Peer i
-    -> NodesWithPing i
-    -> NodeCache i
-    -> WithConfig i a
+    -> Map Peer Ident
+    -> NodesWithPing
+    -> NodeCache
+    -> WithConfig a
 
 -- FIXME: doc
 type Depth = Int
@@ -128,20 +128,18 @@ type Validity = Bool
 --------------------------------------------------------------------------------
 
 -- | Create a NodeTree corresponding to the id
-create :: (Serialize i) => i -> NodeTree i
+create :: Ident -> NodeTree
 create nid = NodeTree (toByteStruct nid) (Bucket [] []) mempty
 
 --------------------------------------------------------------------------------
 
 -- | Lookup a node within a NodeTree
 lookup
-  :: forall i.
-     (Serialize i, Eq i)
-  => NodeTree i
-  -> i
-  -> WithConfig i (Maybe (Node i))
+  :: NodeTree
+  -> Ident
+  -> WithConfig (Maybe Node)
 lookup tree nid
-  = let f :: NodeTreeFunction i (Maybe (Node i))
+  = let f :: NodeTreeFunction (Maybe Node)
         f _ _ _ nodes _ = pure $ List.find (idMatches nid) (map fst nodes)
     in applyAt tree nid f
 
@@ -150,13 +148,11 @@ lookup tree nid
 
 -- | Delete a Node corresponding to a supplied Id from a NodeTree
 delete
-  :: forall i.
-     (Serialize i, Eq i)
-  => NodeTree i
+  :: NodeTree
   -> Peer
-  -> WithConfig i (NodeTree i)
+  -> WithConfig NodeTree
 delete tree peer
-  = let f :: i -> NodeTreeFunction i (NodeTreeElem i, Map Peer i)
+  = let f :: Ident -> NodeTreeFunction (NodeTreeElem, Map Peer Ident)
         f nid _ _ peers nodes cache
           = let filtered = filter (not . idMatches nid . fst) nodes
             in pure (Bucket filtered cache, Map.delete peer peers)
@@ -170,12 +166,10 @@ delete tree peer
 -- if the count exceeds the limit. Also, return whether it's reasonable to ping
 -- the node again.
 handleTimeout
-  :: forall i.
-     (Serialize i, Eq i)
-  => Timestamp
-  -> NodeTree i
+  :: Timestamp
+  -> NodeTree
   -> Peer
-  -> WithConfig i (NodeTree i, Bool)
+  -> WithConfig (NodeTree, Bool)
 handleTimeout currentTime tree peer = do
   case Map.lookup peer (nodeTreePeers tree) of
     Nothing    -> pure (tree, False)
@@ -210,12 +204,11 @@ handleTimeout currentTime tree peer = do
 -- index of its k-bucket and resetting its @timeoutCount@ and @timestamp@,
 -- then return a @('Bucket' … …) :: 'NodeTreeElem' i@.
 refresh
-  :: (Eq i)
-  => Node i
+  :: Node
   -> Timestamp
-  -> NodesWithPing i
-  -> NodeCache i
-  -> NodeTreeElem i
+  -> NodesWithPing
+  -> NodeCache
+  -> NodeTreeElem
 refresh node currentTimestamp nodes cache
   = let nodes' = case List.find (idMatches (nodeId node) . fst) nodes of
                    Just x@(n, _) -> (n, PingInfo currentTimestamp)
@@ -228,19 +221,17 @@ refresh node currentTimestamp nodes cache
 -- |
 -- Insert the given 'Node' into the given 'NodeTree'.
 insert
-  :: forall i.
-     (Serialize i, Eq i)
-  => NodeTree i
-  -> Node i
+  :: NodeTree
+  -> Node
   -> Timestamp
-  -> WithConfig i (NodeTree i)
+  -> WithConfig NodeTree
 insert tree node currentTime = do
   let (Node { nodeId = nid, .. }) = node
   k <- configK <$> getConfig
   cacheSize <- configCacheSize <$> getConfig
 
   -- Check whether a bucket needs splitting FIXME
-  let needsSplit :: NodeTreeFunction i Bool
+  let needsSplit :: NodeTreeFunction Bool
       needsSplit depth valid _ nodes _ = do
         let maxDepth = length (toByteStruct nid) - 1
 
@@ -271,7 +262,7 @@ insert tree node currentTime = do
                    , bucketMayBeSplit
                    ]
 
-  let doInsert :: NodeTreeFunction i (NodeTreeElem i, Map Peer i)
+  let doInsert :: NodeTreeFunction (NodeTreeElem, Map Peer Ident)
       doInsert _ _ peers nodes cache = do
         pure (if -- Refresh an already existing node
                  | (node `elem` map fst nodes)
@@ -308,7 +299,7 @@ insert tree node currentTime = do
 -- |
 -- Split the k-bucket the specified ID would reside in into two and return
 -- a @('Split' … …) :: 'NodeTreeElem' i@ wrapped in a 'NodeTree'.
-split :: (Serialize i) => NodeTree i -> i -> WithConfig i (NodeTree i)
+split :: NodeTree -> Ident -> WithConfig NodeTree
 split tree splitId = modifyAt tree splitId g
   where
     g depth _ peers nodes cache = do
@@ -334,12 +325,11 @@ split tree splitId = modifyAt tree splitId g
 
 -- | Returns @n@ random nodes from @all 'List.\\' ignoredList@.
 pickupRandom
-  :: (Eq i)
-  => NodeTree i
+  :: NodeTree
   -> Int
-  -> [Node i]
+  -> [Node]
   -> StdGen
-  -> [Node i]
+  -> [Node]
 pickupRandom tree n ignoreList randGen
   | (n < 0)
   = error "pickupRandom: assertion failed: n < 0"
@@ -355,21 +345,21 @@ pickupRandom tree n ignoreList randGen
 
 -- | Find the k closest Nodes to a given Id
 findClosest
-  :: forall i.
-     (Serialize i)
-  => NodeTree i
-  -> i
+  :: NodeTree
+  -> Ident
   -> Int
-  -> WithConfig i [Node i]
+  -> WithConfig [Node]
 findClosest (NodeTree idStruct treeElem _) nid n = do
-  let chooseClosest :: [Node i] -> [Node i]
+  let chooseClosest :: [Node] -> [Node]
       chooseClosest nodes = take n (sortByDistanceTo nodes nid)
 
   -- FIXME: combine left and right clauses in `go`
 
   -- This function is partial for the same reason as in 'modifyAt'.
-  let go :: ByteStruct -> ByteStruct -> NodeTreeElem i
-         -> WithConfig i [Node i]
+  let go :: ByteStruct
+         -> ByteStruct
+         -> NodeTreeElem
+         -> WithConfig [Node]
       go is ts el = do
         case (is, ts, el) of
           -- Take the @n@ closest nodes.
@@ -402,19 +392,19 @@ findClosest (NodeTree idStruct treeElem _) nid n = do
 --------------------------------------------------------------------------------
 
 -- | Extract original ID from NodeTree
-extractId :: (Serialize i) => NodeTree i -> i
+extractId :: NodeTree -> Ident
 extractId (NodeTree nid _ _) = fromByteStruct nid
 
 --------------------------------------------------------------------------------
 
 -- | Helper function used for KBucket manipulation
-idMatches :: (Eq i) => i -> Node i -> Bool
+idMatches :: Ident -> Node -> Bool
 idMatches nid node = nid == nodeId node
 
 --------------------------------------------------------------------------------
 
 -- | Turn the NodeTree into a list of buckets, ordered by distance to origin node
-toView :: NodeTree i -> [[(Node i, Timestamp)]]
+toView :: NodeTree -> [[(Node, Timestamp)]]
 toView (NodeTree bs treeElems _) = go bs treeElems []
   where
     -- If the bit is 0, go left, then right
@@ -427,13 +417,13 @@ toView (NodeTree bs treeElems _) = go bs treeElems []
 --------------------------------------------------------------------------------
 
 -- | Turn the NodeTree into a list of nodes
-toList :: NodeTree i -> [(Node i, Timestamp)]
+toList :: NodeTree -> [(Node, Timestamp)]
 toList = concat . toView
 
 --------------------------------------------------------------------------------
 
 -- | Fold over the buckets
-fold :: ([Node i] -> a -> a) -> a -> NodeTree i -> a
+fold :: ([Node] -> a -> a) -> a -> NodeTree -> a
 fold f start (NodeTree _ treeElems _) = go start treeElems
     where go a (Split left right) = let a' = go a left in go a' right
           go a (Bucket nodes _)   = f (map fst nodes) a
@@ -448,11 +438,10 @@ fold f start (NodeTree _ treeElems _) = go start treeElems
 
 -- | Modify the position in the tree where the supplied ID would be.
 modifyAt
-  :: (Serialize i)
-  => NodeTree i
-  -> i
-  -> NodeTreeFunction i (NodeTreeElem i, Map Peer i)
-  -> WithConfig i (NodeTree i)
+  :: NodeTree
+  -> Ident
+  -> NodeTreeFunction (NodeTreeElem, Map Peer Ident)
+  -> WithConfig NodeTree
 modifyAt tree nid f
   = let md1 (x, y) = (x, y, ())
     in fst <$> modifyApplyAt tree nid (\a b c d e -> md1 <$> f a b c d e)
@@ -462,18 +451,17 @@ modifyAt tree nid f
 -- |
 -- Apply a function to the bucket the supplied ID would be located in.
 applyAt
-  :: forall i a.
-     (Serialize i)
-  => NodeTree i
-  -> i
-  -> NodeTreeFunction i a
-  -> WithConfig i a
+  :: forall a
+  .  NodeTree
+  -> Ident
+  -> NodeTreeFunction a
+  -> WithConfig a
 applyAt (NodeTree idStruct treeElem peers) nid f = do
   -- FIXME: combine left and right clauses in `go`
 
   -- This function is partial for the same reason as in modifyAt
-  let go :: ByteStruct -> ByteStruct -> Depth -> Validity -> NodeTreeElem i
-         -> WithConfig i a
+  let go :: ByteStruct -> ByteStruct -> Depth -> Validity -> NodeTreeElem
+         -> WithConfig a
       go is ts depth valid el = do
         case (is, ts, el) of
           -- Apply the function
@@ -497,20 +485,19 @@ applyAt (NodeTree idStruct treeElem peers) nid f = do
 -- | Modify and apply a function at the position in the tree where the
 -- supplied id would be
 modifyApplyAt
-  :: forall i a.
-     (Serialize i)
-  => NodeTree i
-  -> i
-  -> NodeTreeFunction i (NodeTreeElem i, Map Peer i, a)
-  -> WithConfig i (NodeTree i, a)
+  :: forall a
+  .  NodeTree
+  -> Ident
+  -> NodeTreeFunction (NodeTreeElem, Map Peer Ident, a)
+  -> WithConfig (NodeTree, a)
 modifyApplyAt (NodeTree idStruct treeElem peers) nid f = do
   -- FIXME: combine left and right clauses in `go`
 
   -- This function is partial, but we know that there will alwasys be a
   -- bucket at the end. Therefore, we don't have to check for empty
   -- ByteStructs.
-  let go :: ByteStruct -> ByteStruct -> Depth -> Validity -> NodeTreeElem i
-         -> WithConfig i (NodeTreeElem i, Map Peer i, a)
+  let go :: ByteStruct -> ByteStruct -> Depth -> Validity -> NodeTreeElem
+         -> WithConfig (NodeTreeElem, Map Peer Ident, a)
       go is ts depth valid el = do
         case (is, ts, el) of
           -- Apply the function to the position of the bucket

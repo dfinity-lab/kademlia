@@ -141,7 +141,6 @@ module DFINITY.Discovery
   , sortByDistanceTo
   , usingKademliaInstance
   , JoinResult (..)
-  , Serialize (..)
   , Node (..)
   , Peer (..)
   ) where
@@ -165,13 +164,12 @@ import           DFINITY.Discovery.Types
 -- |
 -- Create a new 'KademliaInstance' corresponding to a given ID on a given port.
 create
-  :: (Show i, Serialize i, Ord i, Serialize a, Eq a)
-  => (IP, PortNumber)
+  :: (IP, PortNumber)
   -- ^ Bind address
   -> (IP, PortNumber)
   -- ^ External address
-  -> i
-  -> IO (KademliaInstance i a)
+  -> Ident
+  -> IO KademliaInstance
 create bindAddr extAddr id' = do
   createL bindAddr extAddr id' defaultConfig (const (pure ())) (const (pure ()))
 
@@ -180,16 +178,15 @@ create bindAddr extAddr id' = do
 -- |
 -- Same as 'create', but with logging
 createL
-  :: (Show i, Serialize i, Ord i, Serialize a, Eq a)
-  => (IP, PortNumber)
+  :: (IP, PortNumber)
   -- ^ Bind address
   -> (IP, PortNumber)
   -- ^ External address
-  -> i
-  -> KademliaConfig i
+  -> Ident
+  -> KademliaConfig
   -> (String -> IO ())
   -> (String -> IO ())
-  -> IO (KademliaInstance i a)
+  -> IO KademliaInstance
 createL (host, port) extAddr id' cfg logInfo logError = do
   rq <- emptyReplyQueueL logInfo logError
   let lim = configMsgSizeLimit cfg
@@ -202,16 +199,15 @@ createL (host, port) extAddr id' cfg logInfo logError = do
 
 -- | Create instance with logging from the given 'KademliaSnapshot'.
 createLFromSnapshot
-  :: (Show i, Serialize i, Ord i, Serialize a, Eq a)
-  => (IP, PortNumber)
+  :: (IP, PortNumber)
   -- ^ Bind address
   -> (IP, PortNumber)
   -- ^ External address
-  -> KademliaConfig i
-  -> KademliaSnapshot i a
+  -> KademliaConfig
+  -> KademliaSnapshot
   -> (String -> IO ())
   -> (String -> IO ())
-  -> IO (KademliaInstance i a)
+  -> IO KademliaInstance
 createLFromSnapshot (host, port) extAddr cfg snapshot logInfo logError = do
   rq <- emptyReplyQueueL logInfo logError
   let lim = configMsgSizeLimit cfg
@@ -225,7 +221,7 @@ createLFromSnapshot (host, port) extAddr cfg snapshot logInfo logError = do
 
 -- | Stop a 'KademliaInstance' by 'close'ing it.
 close
-  :: KademliaInstance i a
+  :: KademliaInstance
   -> IO ()
 close = closeK . instanceHandle
 
@@ -233,8 +229,8 @@ close = closeK . instanceHandle
 
 -- | Run 'WithConfig' action using the given 'KademliaInstance'.
 usingKademliaInstance
-  :: WithConfig i a
-  -> KademliaInstance i v
+  :: WithConfig a
+  -> KademliaInstance
   -> a
 usingKademliaInstance f = usingConfig f . instanceConfig
 

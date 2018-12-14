@@ -20,22 +20,21 @@ import qualified Data.ByteString          as B
 import           Test.QuickCheck          ()
 
 import           DFINITY.Discovery.Config (defaultConfig, usingConfig)
-import           DFINITY.Discovery.Types  (fromByteStruct, toBS, toByteStruct)
-
-import           Tests.TestTypes          (IdType)
+import           DFINITY.Discovery.Types
+                 (Ident (..), fromByteStruct, toByteStruct)
 
 --------------------------------------------------------------------------------
 
 -- | Checks whether toByteStruct converts correctly
-toByteStructCheck :: IdType -> Bool
+toByteStructCheck :: Ident -> Bool
 toByteStructCheck nid = foldl foldingFunc True [0..length converted - 1]
     where converted = toByteStruct nid
-          byteWords = B.unpack . toBS $ nid
+          byteWords = B.unpack . fromIdent $ nid
           foldingFunc b i = b && (converted !! i == access byteWords i)
           access ws i = testBit (ws !! (i `div` 8)) (i `mod` 8)
 
 -- | Checks whether fromByteStruct converts correctly
-fromByteStructCheck :: IdType -> Bool
+fromByteStructCheck :: Ident -> Bool
 fromByteStructCheck nid = nid == fromByteStruct (toByteStruct nid)
 
 --------------------------------------------------------------------------------

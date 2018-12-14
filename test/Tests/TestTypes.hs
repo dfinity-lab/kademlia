@@ -2,6 +2,7 @@
 
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeApplications           #-}
 {-# LANGUAGE TypeSynonymInstances       #-}
 
 --------------------------------------------------------------------------------
@@ -13,27 +14,20 @@
 --------------------------------------------------------------------------------
 
 module Tests.TestTypes
-  ( IdType    (..)
-  , NodeBunch (..)
+  ( NodeBunch (..)
   , IdBunch   (..)
   ) where
 
 --------------------------------------------------------------------------------
 
-import           Control.Applicative        ((<|>))
-import           Control.Arrow              (first)
-import           Control.Monad              (liftM, liftM2)
-import           Data.Binary                (Binary)
-import qualified Data.ByteString            as B
 import qualified Data.ByteString.Char8      as C
 import           Data.Function              (on)
 import           Data.List                  (nubBy)
-import qualified Data.Text                  as Text
 import           Data.Word                  (Word16)
 import           Network.Socket             (PortNumber)
 
 import           Test.QuickCheck
-                 (Arbitrary (..), Gen, oneof, suchThat, vectorOf)
+                 (Arbitrary (..), oneof, suchThat, vectorOf)
 import           Test.QuickCheck.Instances  ()
 
 import           Data.IP                    (IP (IPv4, IPv6))
@@ -41,40 +35,22 @@ import qualified Data.IP                    as IP
 
 import           DFINITY.Discovery.Instance (BanState (..))
 import           DFINITY.Discovery.Types
-                 (Command (..), Node (..), Peer (..), Serialize (..),
-                 Signal (..))
+                 (Command (..), Ident (..), Node (..), Peer (..), Signal (..))
 
 --------------------------------------------------------------------------------
 
-newtype IdType = IT
-    { getBS :: B.ByteString
-    } deriving (Eq, Ord, Binary)
+instance Arbitrary Ident where
+  arbitrary = do
+    str <- vectorOf 5 arbitrary
+    pure $ Ident $ C.pack str
 
--- Custom show instance
-instance Show IdType where
-    show = show . getBS
-
--- A simple 5-byte ByteString
-instance Serialize IdType where
-    toBS = getBS
-    fromBS bs = if B.length bs >= 5
-        then Right $ first IT . B.splitAt 5 $ bs
-        else Left "ByteString to short."
-
-instance Serialize String where
-    toBS = C.pack . show
-    fromBS s =
-        case (reads :: ReadS String) . C.unpack $ s of
-            []               -> Left "Failed to parse string."
-            (result, rest):_ -> Right (result, C.pack rest)
-
-instance Arbitrary IdType where
-    arbitrary = do
-        str <- vectorOf 5 arbitrary
-        return $ IT $ C.pack str
+-- instance Arbitrary Value where
+--   arbitrary = do
+--     str <- vectorOf 10 arbitrary
+--     pure $ Value $ C.pack str
 
 instance Arbitrary PortNumber where
-    arbitrary = liftM fromIntegral (arbitrary :: Gen Word16)
+  arbitrary = fromIntegral <$> (arbitrary @Word16)
 
 instance Arbitrary Peer where
   arbitrary = do
@@ -85,46 +61,48 @@ instance Arbitrary Peer where
     port <- arbitrary
     pure (Peer host port)
 
-instance (Arbitrary i, Arbitrary v) => Arbitrary (Command i v) where
-    arbitrary = oneof [
-          return PING
-        , return PONG
-        , liftM FIND_NODE arbitrary
-        , liftM2 (RETURN_NODES 1) arbitrary $ vectorOf 30 arbitrary
-        ]
+instance Arbitrary Command where
+  arbitrary = oneof
+              [ pure PING
+              , pure PONG
+              , FIND_NODE <$> arbitrary
+              , RETURN_NODES 1 <$> arbitrary <*> vectorOf 30 arbitrary
+              ]
 
-instance (Arbitrary i, Arbitrary v) => Arbitrary (Signal i v) where
-    arbitrary = liftM2 Signal arbitrary arbitrary
+instance Arbitrary Signal where
+  arbitrary = Signal <$> arbitrary <*> arbitrary
 
-instance (Arbitrary i) => Arbitrary (Node i) where
-    arbitrary = liftM2 Node arbitrary arbitrary
+instance Arbitrary Node where
+  arbitrary = Node <$> arbitrary <*> arbitrary
 
 -- | This enables me to specifiy a new Arbitrary instance
-newtype NodeBunch i = NB {
-      nodes :: [Node i]
-    } deriving (Show)
+newtype NodeBunch
+  = NodeBunch { nodes :: [Node] }
+  deriving (Show)
 
 -- | Make sure all Ids are unique
-instance (Arbitrary i, Eq i) => Arbitrary (NodeBunch i) where
-    arbitrary = liftM NB $ vectorOf 20 arbitrary `suchThat` individualIds
-        where individualIds = individual ((==) `on` nodeId)
+instance Arbitrary NodeBunch where
+  arbitrary
+    = NodeBunch <$> vectorOf 20 arbitrary `suchThat` individualIds
+    where
+      individualIds = individual ((==) `on` nodeId)
 
 individual :: (a -> a -> Bool) -> [a] -> Bool
 individual eq s = length s == length (nubBy eq s)
 
 -- | This is needed for the Implementation tests
-newtype IdBunch i = IB {
-      getIds :: [i]
-    } deriving (Show)
+newtype IdBunch
+  = IdBunch { getIds :: [Ident] }
+  deriving (Show)
 
-instance (Arbitrary i, Eq i) => Arbitrary (IdBunch i) where
-    arbitrary = IB <$> vectorOf 30 arbitrary `suchThat` individual (==)
+instance Arbitrary IdBunch where
+  arbitrary = IdBunch <$> vectorOf 30 arbitrary `suchThat` individual (==)
 
 instance Arbitrary BanState where
-    arbitrary = oneof
-        [ return BanForever
-        , return NoBan
-        , BanTill <$> arbitrary
-        ]
+  arbitrary = oneof
+              [ pure BanForever
+              , pure NoBan
+              , BanTill <$> arbitrary
+              ]
 
 --------------------------------------------------------------------------------

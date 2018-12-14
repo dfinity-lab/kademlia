@@ -38,21 +38,21 @@ import           DFINITY.Discovery.Config
                  (WithConfig, configK, defaultConfig, usingConfig)
 import qualified DFINITY.Discovery.Tree   as T
 import           DFINITY.Discovery.Types
-                 (Node (..), Serialize (..), Timestamp, distance)
+                 (Ident, Node (..), Timestamp, distance)
 
-import           Tests.TestTypes          (IdType (..), NodeBunch (..))
+import           Tests.TestTypes          (NodeBunch (..))
 
 --------------------------------------------------------------------------------
 
-usingDefaultConfig :: WithConfig i a -> a
+usingDefaultConfig :: WithConfig a -> a
 usingDefaultConfig = flip usingConfig defaultConfig
 
 -- | Helper method for lookup checking
-lookupCheck :: (Serialize i, Eq i) => T.NodeTree i -> Node i -> Bool
+lookupCheck :: T.NodeTree -> Node -> Bool
 lookupCheck tree node = usingDefaultConfig (T.lookup tree (nodeId node)) == Just node
 
 -- | Check whether an inserted Node is retrievable
-insertCheck :: IdType -> Node IdType -> Bool
+insertCheck :: Ident -> Node -> Bool
 insertCheck nid node = usingDefaultConfig $ do
     let timestamp = 0 :: Timestamp
     tree <- join (T.insert
@@ -62,7 +62,7 @@ insertCheck nid node = usingDefaultConfig $ do
     return $ lookupCheck tree node
 
 -- | Make sure a deleted Node can't be retrieved anymore
-deleteCheck :: IdType -> Node IdType -> Bool
+deleteCheck :: Ident -> Node -> Bool
 deleteCheck nid node = usingDefaultConfig $ do
     let timestamp = 0 :: Timestamp
     origin <- join (T.insert
@@ -72,8 +72,11 @@ deleteCheck nid node = usingDefaultConfig $ do
     tree <- T.delete origin (nodePeer node)
     pure (not (lookupCheck tree node))
 
-withTree :: (T.NodeTree IdType -> [Node IdType] -> WithConfig IdType a) ->
-            NodeBunch IdType -> IdType -> a
+withTree
+  :: (T.NodeTree -> [Node] -> WithConfig a)
+  -> NodeBunch
+  -> Ident
+  -> a
 withTree f bunch nid = usingDefaultConfig $ do
     let timestamp = 0 :: Timestamp
     tree <- join (foldrM (\node tree -> T.insert tree node timestamp)
@@ -81,7 +84,7 @@ withTree f bunch nid = usingDefaultConfig $ do
                   <*> pure (nodes bunch))
     f tree (nodes bunch)
 
-splitCheck :: NodeBunch IdType -> IdType -> Property
+splitCheck :: NodeBunch -> Ident -> Property
 splitCheck = withTree (\tree -> pure . conjoin . foldr (foldingFunc tree) [])
   where
     contains tree node = node `elem` T.toList tree
@@ -94,14 +97,14 @@ splitCheck = withTree (\tree -> pure . conjoin . foldr (foldingFunc tree) [])
           lookupCheck tree node || not (tree `contains` (node, 0)))
 
 -- | Make sure the bucket sizes end up correct
-bucketSizeCheck :: NodeBunch IdType -> IdType -> Bool
+bucketSizeCheck :: NodeBunch -> Ident -> Bool
 bucketSizeCheck = withTree $ \tree _ -> return $ T.fold foldingFunc True tree
   where
     foldingFunc _ False = False
     foldingFunc b _     = length b <= configK defaultConfig
 
 -- | Make sure refreshed Nodes are actually refreshed
-refreshCheck :: NodeBunch IdType -> IdType -> Bool
+refreshCheck :: NodeBunch -> Ident -> Bool
 refreshCheck = withTree $ \tree ns -> do
   let node = last ns
       foldingFunc _  False = False
@@ -112,7 +115,7 @@ refreshCheck = withTree $ \tree ns -> do
 
 -- | Make sure findClosest returns the Node with the closest Ids of all nodes
 --   in the tree.
-findClosestCheck :: IdType -> NodeBunch IdType -> IdType -> Property
+findClosestCheck :: Ident -> NodeBunch -> Ident -> Property
 findClosestCheck nid = withTree $ \tree ns -> do
   let contains node = isJust <$> T.lookup tree (nodeId node)
       distanceF = distance nid . nodeId
@@ -129,7 +132,7 @@ findClosestCheck nid = withTree $ \tree ns -> do
   return . conjoin . foldr g [] $ manualClosest
 
 -- | Check that 'T.pickupNotClosest' doesn't return closest nodes.
-pickupNotClosestDifferentCheck :: IdType -> NodeBunch IdType -> IdType -> Property
+pickupNotClosestDifferentCheck :: Ident -> NodeBunch -> Ident -> Property
 pickupNotClosestDifferentCheck nid = withTree $ \tree _ -> do
     let k = configK defaultConfig
     closest <- T.findClosest tree nid k
@@ -137,7 +140,7 @@ pickupNotClosestDifferentCheck nid = withTree $ \tree _ -> do
     return . property $ all (`notElem` notClosest) closest
 
 -- | Make sure `toView` represents tree correctly
-viewCheck :: NodeBunch IdType -> IdType -> Bool
+viewCheck :: NodeBunch -> Ident -> Bool
 viewCheck = withTree $ \tree ns -> do
     let originId = T.extractId tree
     let view = map (map fst) (T.toView tree)

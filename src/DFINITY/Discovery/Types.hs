@@ -15,11 +15,12 @@
 
 module DFINITY.Discovery.Types
   ( ByteStruct
-  , Command   (..)
-  , Node      (..)
-  , Peer      (..)
-  , Serialize (..)
-  , Signal    (..)
+  , Command (..)
+  , Node    (..)
+  , Peer    (..)
+  , Signal  (..)
+  , Ident   (..)
+  , Value   (..)
   , Timestamp
 
   , distance
@@ -50,6 +51,22 @@ import qualified Data.IP                  as IP
 import           Codec.Serialise          (Serialise, decode, encode)
 import           Codec.Serialise.Decoding (decodeListLen, decodeWord)
 import           Codec.Serialise.Encoding (encodeListLen, encodeWord)
+
+--------------------------------------------------------------------------------
+
+newtype Ident
+  = Ident { fromIdent :: ByteString }
+  deriving (Eq, Ord, Show, Read, Generic)
+
+instance Serialise Ident
+
+--------------------------------------------------------------------------------
+
+newtype Value
+  = Value { fromValue :: ByteString }
+  deriving (Eq, Ord, Show, Read, Generic)
+
+instance Serialise Value
 
 --------------------------------------------------------------------------------
 
@@ -94,40 +111,52 @@ wrapPort = fromIntegral
 --------------------------------------------------------------------------------
 
 -- | Representation of a Kademlia 'Node', containing a 'Peer' and an ID.
-data Node i
+data Node
   = Node
     { nodePeer :: !Peer
       -- FIXME: switch to MaxHeap Timestamp Peer
       --        where `type MaxHeap p a = Heap (Entry (Down p) a)`
       --        is using the `heaps` package
-    , nodeId   :: !i
+    , nodeId   :: !Ident
     }
   deriving (Eq, Ord, Generic)
 
-instance Show i => Show (Node i) where
+instance Serialise Node
+
+instance Show Node where
   show (Node peer ident) = show peer ++ " (" ++ show ident ++ ")"
+
+-- createNode
+--   :: (MonadIO m)
+--   => Peer
+--   -> Ident
+--   -> WithConfigT m Node
+-- createNode peer ident = do
+--   sigScheme <- configSignatureScheme <$> getConfig
+--   sig <- liftIO $ sign sigScheme (LBS.toStrict (serialise peer))
+--   pure (Node peer ident sig)
+--
+-- verifyNode
+--   :: (MonadIO m)
+--   => Node
+--   -> WithConfigT m Bool
+-- verifyNode (Node peer ident sig) = do
+--   sigScheme <- configSignatureScheme <$> getConfig
+--   liftIO $ verify sigScheme ident sig (LBS.toStrict (serialise peer))
 
 --------------------------------------------------------------------------------
 
 -- | Sort a bucket by the closeness of its nodes to a given ID.
 sortByDistanceTo
-  :: (Serialize i)
-  => [Node i]
-  -> i
-  -> [Node i]
+  :: [Node]
+  -> Ident
+  -> [Node]
 sortByDistanceTo bucket nid = do
   let f = distance nid . nodeId
   let pack bk = zip bk (map f bk)
   let sort = sortBy (compare `on` snd)
   let unpack = map fst
   unpack (sort (pack bucket))
-
---------------------------------------------------------------------------------
-
--- | A structure serializable into and parsable from a 'ByteString'.
-class Serialize a where
-  fromBS :: ByteString -> Either String (a, ByteString)
-  toBS   :: a -> ByteString
 
 --------------------------------------------------------------------------------
 
@@ -140,26 +169,22 @@ type ByteStruct = [Bool]
 
 -- | Converts a Serialize into a ByteStruct
 toByteStruct
-  :: (Serialize a)
-  => a
+  :: Ident
   -> ByteStruct
-toByteStruct s = BS.foldr (\w bits -> convert w ++ bits) [] $ toBS s
+toByteStruct
+  = BS.foldr (\w bits -> convert w ++ bits) [] . fromIdent
   where
-    convert w = foldr (\i bits -> testBit w i : bits) [] [0..7]
+    convert w = foldr (\i bits -> testBit w i : bits) [] [0 .. 7]
 
 --------------------------------------------------------------------------------
 
 -- | Convert a ByteStruct back to its ByteString form
 fromByteStruct
-  :: (Serialize a)
-  => ByteStruct
-  -> a
+  :: ByteStruct
+  -> Ident
 fromByteStruct bs
-  = case fromBS s of
-      (Right (converted, _)) -> converted
-      (Left err)             -> error $ "Failed to convert from ByteStruct: " ++ err
+  = Ident $ BS.pack $ foldr (\i ws -> createWord i : ws) [] indexes
   where
-    s = BS.pack . foldr (\i ws -> createWord i : ws) [] $ indexes
     indexes = [0 .. (length bs `div` 8) - 1]
     createWord i = let pos = i * 8
                    in foldr changeBit zeroBits [pos .. pos + 7]
@@ -173,9 +198,8 @@ fromByteStruct bs
 -- Calculate the distance between two IDs using the XOR metric as specified in
 -- the Kademlia paper.
 distance
-  :: (Serialize i)
-  => i
-  -> i
+  :: Ident
+  -> Ident
   -> ByteStruct
 distance idA idB
   = let xor a b = not (a && b) && (a || b)
@@ -193,10 +217,10 @@ toPeer sockAddr = pure (uncurry Peer <$> IP.fromSockAddr sockAddr)
 
 -- |
 -- Representation of a protocol signal.
-data Signal i v
+data Signal
   = Signal
-    { signalSource  :: !(Node i)
-    , signalCommand :: !(Command i v)
+    { signalSource  :: !Node
+    , signalCommand :: !Command
     }
   deriving (Eq, Show)
 
@@ -204,22 +228,55 @@ data Signal i v
 
 -- |
 -- Representation of the different protocol commands.
-data Command i a
+data Command
   = PING
   | PONG
-  | STORE        !i !a
-  | FIND_NODE    !i
-  | RETURN_NODES !Word8 !i ![Node i]
-  | FIND_VALUE   !i
-  | RETURN_VALUE !i !a
+  | STORE        !Ident !Value
+  | FIND_NODE    !Ident
+  | RETURN_NODES !Word8 !Ident ![Node]
+  | FIND_VALUE   !Ident
+  | RETURN_VALUE !Ident !Value
   deriving (Eq)
 
-instance Show i => Show (Command i a) where
+instance Serialise Command where
+  encode PING                         = encodeListLen 1 <> encodeWord 0
+  encode PONG                         = encodeListLen 1 <> encodeWord 1
+  encode (STORE ident payload)        = encodeListLen 3 <> encodeWord 2
+                                        <> encode ident
+                                        <> encode payload
+  encode (FIND_NODE ident)            = encodeListLen 2 <> encodeWord 3
+                                        <> encode ident
+  encode (RETURN_NODES n ident nodes) = encodeListLen 4 <> encodeWord 4
+                                        <> encode n
+                                        <> encode ident
+                                        <> encode nodes
+  encode (FIND_VALUE ident)           = encodeListLen 2 <> encodeWord 5
+                                        <> encode ident
+  encode (RETURN_VALUE ident payload) = encodeListLen 3 <> encodeWord 6
+                                        <> encode ident
+                                        <> encode payload
+
+  decode = do
+    len <- decodeListLen
+    tag <- decodeWord
+    case (len, tag) of
+      (1, 0) -> pure PING
+      (1, 1) -> pure PONG
+      (3, 2) -> STORE <$> decode <*> decode
+      (2, 3) -> FIND_NODE <$> decode
+      (4, 4) -> RETURN_NODES <$> decode <*> decode <*> decode
+      (2, 5) -> FIND_VALUE <$> decode
+      (3, 6) -> RETURN_VALUE <$> decode <*> decode
+      _      -> fail "invalid Command encoding"
+
+instance Show Command where
   show PING                     = "PING"
   show PONG                     = "PONG"
   show (STORE i _)              = "STORE " ++ show i ++ " <data>"
+                                  -- FIXME: encode bytestring as hex here
   show (FIND_VALUE i)           = "FIND_VALUE " ++ show i
   show (RETURN_VALUE i _)       = "RETURN_VALUE " ++ show i ++ " <data>"
+                                  -- FIXME: encode bytestring as hex here
   show (FIND_NODE i)            = "FIND_NODE " ++ show i
   show (RETURN_NODES n i nodes) = "RETURN_NODES "
                                   ++ "(one of " ++ show n ++ " messages) "
