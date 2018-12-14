@@ -20,15 +20,17 @@ module DFINITY.Discovery.Signature
 
 --------------------------------------------------------------------------------
 
-import           GHC.Generics    (Generic)
-
+import           Codec.Serialise (Serialise)
 import           Data.ByteString (ByteString)
+import           GHC.Generics    (Generic)
 
 --------------------------------------------------------------------------------
 
 newtype Signature
   = Signature { fromSignature :: ByteString }
   deriving (Eq, Ord, Show, Read, Generic)
+
+instance Serialise Signature
 
 --------------------------------------------------------------------------------
 
