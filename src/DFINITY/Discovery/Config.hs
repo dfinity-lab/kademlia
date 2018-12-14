@@ -27,6 +27,7 @@ module DFINITY.Discovery.Config
 --------------------------------------------------------------------------------
 
 import           Control.Monad.Identity      (Identity, runIdentity)
+import           Control.Monad.IO.Class      (MonadIO)
 import           Control.Monad.Reader        (ReaderT, ask, runReaderT)
 import           Control.Monad.Trans         (MonadTrans)
 import           DFINITY.Discovery.Signature
@@ -131,7 +132,7 @@ newtype WithConfigT i m a
   = WithConfigT
     { getWithConfigT :: ReaderT (KademliaConfig i) m a
     }
-  deriving (Functor, Applicative, Monad, MonadTrans)
+  deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
 
 --------------------------------------------------------------------------------
 
