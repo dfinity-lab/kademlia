@@ -33,19 +33,23 @@ module DFINITY.Discovery.Types
 
 --------------------------------------------------------------------------------
 
-import           Data.Bits       (setBit, testBit, zeroBits)
-import           Data.Function   (on)
-import           Data.Int        (Int64)
-import           Data.List       (sortBy)
-import           Data.Word       (Word16, Word8)
-import           GHC.Generics    (Generic)
-import           Network.Socket  (PortNumber (..), SockAddr (..))
+import           Data.Bits                (setBit, testBit, zeroBits)
+import           Data.Function            (on)
+import           Data.Int                 (Int64)
+import           Data.List                (sortBy)
+import           Data.Word                (Word16, Word8)
+import           GHC.Generics             (Generic)
+import           Network.Socket           (PortNumber (..), SockAddr (..))
 
-import           Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
+import           Data.ByteString          (ByteString)
+import qualified Data.ByteString          as BS
 
-import           Data.IP         (IP)
-import qualified Data.IP         as IP
+import           Data.IP                  (IP)
+import qualified Data.IP                  as IP
+
+import           Codec.Serialise          (Serialise, decode, encode)
+import           Codec.Serialise.Decoding (decodeListLen, decodeWord)
+import           Codec.Serialise.Encoding (encodeListLen, encodeWord)
 
 --------------------------------------------------------------------------------
 
@@ -59,6 +63,27 @@ data Peer
 
 instance Show Peer where
   show (Peer h p) = show h ++ ":" ++ show p
+
+instance Serialise Peer where
+  encode (Peer (IP.IPv4 ip) port)
+    = encodeListLen 3
+      <> encodeWord 0
+      <> encode (IP.toHostAddress ip)
+      <> encode (fromEnum port)
+  encode (Peer (IP.IPv6 ip) port)
+    = encodeListLen 3
+      <> encodeWord 1
+      <> encode (IP.toHostAddress6 ip)
+      <> encode (fromEnum port)
+  decode = do
+    len <- decodeListLen
+    tag <- decodeWord
+    ip <- case (len, tag) of
+      (3, 0) -> IP.IPv4 . IP.fromHostAddress  <$> decode
+      (3, 1) -> IP.IPv6 . IP.fromHostAddress6 <$> decode
+      _      -> fail "invalid Peer encoding"
+    port <- toEnum <$> decode
+    pure $ Peer ip port
 
 unwrapPort :: PortNumber -> Word16
 unwrapPort = fromIntegral
