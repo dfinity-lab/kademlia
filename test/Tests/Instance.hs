@@ -1,5 +1,6 @@
 --------------------------------------------------------------------------------
 
+{-# OPTIONS_GHC -Wno-unused-local-binds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 --------------------------------------------------------------------------------
@@ -43,15 +44,15 @@ import           DFINITY.Discovery.Instance
                  (BanState (..), KademliaInstance (..), KademliaSnapshot (..),
                  banNode, dumpPeers, isNodeBanned, lookupNode)
 import           DFINITY.Discovery.Networking
-                 (KademliaHandle (..), closeK, openOn, send, startRecvProcess)
+                 (closeK, openOn, send, startRecvProcess)
 import           DFINITY.Discovery.ReplyQueue
                  (Reply (..), ReplyQueue (..), emptyReplyQueue)
 import qualified DFINITY.Discovery.Tree       as T
 import           DFINITY.Discovery.Types
-                 (Command (..), Node (..), Peer (..), Serialize (..),
-                 Signal (..), Timestamp)
+                 (Command (..), Ident (..), Node (..), Peer (..), Signal (..),
+                 Timestamp)
 
-import           Tests.TestTypes              (IdType (..), NodeBunch (..))
+import           Tests.TestTypes              (NodeBunch (..))
 import           Tests.Tree                   (withTree)
 
 --------------------------------------------------------------------------------
@@ -63,7 +64,7 @@ peers = let pA = Peer "127.0.0.1" 1122
         in (pA, pB)
 
 -- | A set of randomly generated Ids
-ids :: (Monad m) => PropertyM m (IdType, IdType)
+ids :: (Monad m) => PropertyM m (Ident, Ident)
 ids = liftM2 (,) (pick arbitrary) (pick arbitrary)
 
 -- | Checks whether PINGs are handled appropriately
@@ -71,21 +72,19 @@ handlesPingCheck :: Assertion
 handlesPingCheck = do
     let (_, pB) = peers
 
-    let (Right (idA, _)) = fromBS . C.replicate 32 $ 'a'
-                           :: Either String (IdType, C.ByteString)
-    let (Right (idB, _)) = fromBS . C.replicate 32 $ 'b'
-                           :: Either String (IdType, C.ByteString)
+    let idA = Ident (C.replicate 32 'a')
+    let idB = Ident (C.replicate 32 'b')
 
     rq <- emptyReplyQueue
 
-    khA <- openOn "127.0.0.1" 1122 idA rq :: IO (KademliaHandle IdType String)
+    khA <- openOn "127.0.0.1" 1122 idA rq
     kiB <- create ("127.0.0.1", 1123) ("127.0.0.1", 1123) idB
-           :: IO (KademliaInstance IdType String)
+           :: IO KademliaInstance
 
     startRecvProcess khA
 
     send khA pB PING
-    (Answer sig) <- readChan . replyQueueDispatchChan $ rq :: IO (Reply IdType String)
+    (Answer sig) <- readChan (replyQueueDispatchChan rq)
 
     closeK khA
     close kiB
@@ -103,11 +102,10 @@ trackingKnownPeersCheck = monadicIO $ do
     (idA, idB) <- ids
 
     (node, kiB) <- run $ do
-        rq <- emptyReplyQueue :: IO (ReplyQueue IdType String)
+        rq <- emptyReplyQueue :: IO ReplyQueue
 
         khA <- openOn "127.0.0.1" 1122 idA rq
         kiB <- create ("127.0.0.1", 1123) ("127.0.0.1", 1123) idB
-               :: IO (KademliaInstance IdType String)
 
         startRecvProcess khA
 
@@ -131,12 +129,11 @@ trackingKnownPeersCheck = monadicIO $ do
 -- | Make sure `isNodeBanned` works correctly
 isNodeBannedCheck :: Assertion
 isNodeBannedCheck = do
-    let (idA, idB) = (IT (C.pack "hello"), IT (C.pack "herro"))
+    let (idA, idB) = (Ident (C.pack "hello"), Ident (C.pack "salve"))
     let (peerA, peerB) = (Peer "127.0.0.1" 1123, Peer "127.0.0.1" 1124)
     let (nodeA, nodeB) = (Node peerA idA, Node peerB idB)
 
     inst <- create ("127.0.0.1", 1123) ("127.0.0.1", 1123) idA
-            :: IO (KademliaInstance IdType String)
 
     let check msg ans = do
             ban <- isNodeBanned inst peerB
@@ -157,15 +154,13 @@ banNodeCheck :: Assertion
 banNodeCheck = do
     let (peerA, peerB) = peers
 
-    let (Right (idA, _)) = fromBS . C.replicate 32 $ 'a'
-                           :: Either String (IdType, C.ByteString)
-    let (Right (idB, _)) = fromBS . C.replicate 32 $ 'b'
-                           :: Either String (IdType, C.ByteString)
+    let idA = Ident (C.replicate 32 'a')
+    let idB = Ident (C.replicate 32 'b')
+
     rq <- emptyReplyQueue
 
-    khA <- openOn "127.0.0.1" 1122 idA rq :: IO (KademliaHandle IdType String)
+    khA <- openOn "127.0.0.1" 1122 idA rq
     kiB <- create ("127.0.0.1", 1123) ("127.0.0.1", 1123) idB
-           :: IO (KademliaInstance IdType String)
 
     banNode kiB (Node peerA idA) BanForever
     startRecvProcess khA
@@ -177,7 +172,7 @@ banNodeCheck = do
         threadDelay 10000
         writeChan (replyQueueDispatchChan rq) Closed
 
-    res <- readChan . replyQueueDispatchChan $ rq :: IO (Reply IdType String)
+    res <- readChan (replyQueueDispatchChan rq)
 
     closeK khA
     close kiB
@@ -189,7 +184,7 @@ banNodeCheck = do
     return ()
 
 -- Snapshot is serialized and deserialized well
-snapshotCheck :: NodeBunch IdType -> IdType -> [BanState] -> Property
+snapshotCheck :: NodeBunch -> Ident -> [BanState] -> Property
 snapshotCheck = withTree $ \tree ns -> pure $ \bans ->
         let banned = M.fromList $ zip (map nodePeer ns) bans
             sp     = KademliaSnapshot tree banned mempty

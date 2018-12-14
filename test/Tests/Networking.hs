@@ -33,24 +33,24 @@ import           DFINITY.Discovery.ReplyQueue
                  ReplyRegistration (ReplyRegistration), ReplyType (..),
                  dispatch, emptyReplyQueue)
 import           DFINITY.Discovery.Types
-                 (Command (..), Node (..), Peer (..), Signal (..))
+                 (Command (..), Ident, Node (..), Peer (..), Signal (..))
 
-import           Tests.TestTypes              (IdType (..))
+import           Tests.TestTypes              ()
 
 --------------------------------------------------------------------------------
 
-valueSet :: (Monad m) => PropertyM m (Peer, Peer, IdType, IdType)
+valueSet :: (Monad m) => PropertyM m (Peer, Peer, Ident, Ident)
 valueSet = do
     let pA = Peer "127.0.0.1" 1122
         pB = Peer "127.0.0.1" 1123
 
-    idA <- pick (arbitrary :: Gen IdType)
-    idB <- pick (arbitrary :: Gen IdType)
+    idA <- pick (arbitrary :: Gen Ident)
+    idB <- pick (arbitrary :: Gen Ident)
 
     return (pA, pB, idA, idB)
 
 -- | Make sure sending and receiving works
-sendCheck :: Command IdType String -> Property
+sendCheck :: Command -> Property
 sendCheck cmd = monadicIO $ do
     (pA, pB, idA, idB) <- valueSet
 
@@ -60,13 +60,12 @@ sendCheck cmd = monadicIO $ do
 
         khA <- openOn "127.0.0.1" 1122 idA rqA
         khB <- openOn "127.0.0.1" 1123 idB rqB
-               :: IO (KademliaHandle IdType String)
+               :: IO KademliaHandle
 
         startRecvProcess khB
 
         send khA pB cmd
         (Answer sig) <- readChan (replyQueueDispatchChan rqB)
-                        :: IO (Reply IdType String)
 
         closeK khA
         closeK khB
@@ -80,7 +79,7 @@ sendCheck cmd = monadicIO $ do
     return ()
 
 -- | Make sure expect works the way it's supposed to
-expectCheck :: Signal IdType String -> IdType -> Property
+expectCheck :: Signal -> Ident -> Property
 expectCheck sig idA = monadicIO $ do
     let rtM = rType (signalCommand sig)
     pre (isJust rtM)
@@ -94,11 +93,11 @@ expectCheck sig idA = monadicIO $ do
 
         startRecvProcess khA
 
-        testChan <- newChan :: IO (Chan (Reply IdType String))
+        testChan <- newChan :: IO (Chan Reply)
         expect khA rr testChan
         dispatch (Answer sig) rqA
 
-        (Answer replySig) <- readChan testChan :: IO (Reply IdType String)
+        (Answer replySig) <- readChan testChan :: IO Reply
 
         closeK khA
 
@@ -107,7 +106,7 @@ expectCheck sig idA = monadicIO $ do
     assert $ replySig == sig
 
 -- | Convert a command into a ReplyType
-rType :: Command i a -> Maybe (ReplyType i)
+rType :: Command -> Maybe ReplyType
 rType  PONG                  = Just  R_PONG
 rType (RETURN_NODES _ nid _) = Just (R_RETURN_NODES nid)
 rType _                      = Nothing

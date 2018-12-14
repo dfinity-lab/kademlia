@@ -28,12 +28,10 @@ import           DFINITY.Discovery.ReplyQueue
 import           DFINITY.Discovery.Types
                  (Command (..), Node (..), Signal (..))
 
-import           Tests.TestTypes              (IdType (..))
-
 --------------------------------------------------------------------------------
 
 -- | Check whether registered reply handlers a used
-repliesCheck :: Signal IdType String -> Signal IdType String -> Property
+repliesCheck :: Signal -> Signal -> Property
 repliesCheck sig1 sig2 = monadicIO $ do
     let reg1 = toRegistration sig1
     let reg2 = toRegistration sig2
@@ -45,7 +43,7 @@ repliesCheck sig1 sig2 = monadicIO $ do
 
     contents <- run $ do
         rq <- emptyReplyQueue
-        chan <- newChan :: IO (Chan (Reply IdType String))
+        chan <- newChan :: IO (Chan Reply)
 
         register replyReg1 rq chan
         register replyReg2 rq chan
@@ -71,7 +69,7 @@ repliesCheck sig1 sig2 = monadicIO $ do
     assert $ unwrapped2 == sig2
 
 -- | Check whether registered reply handlers are removed after usage
-removedCheck :: Signal IdType String -> Property
+removedCheck :: Signal -> Property
 removedCheck sig = monadicIO $ do
     let reg = toRegistration sig
     case reg of
@@ -80,20 +78,20 @@ removedCheck sig = monadicIO $ do
         Just reg' -> do
             removed <- run $ do
                 rq <- emptyReplyQueue
-                chan <- newChan :: IO (Chan (Reply IdType String))
+                chan <- newChan :: IO (Chan Reply)
                 register reg' rq chan
                 dispatch (Answer sig) rq
                 null <$> atomically (readTVar (replyQueueQueue rq))
             assert removed
 
 -- | Convert a Signal into its ReplyRegistration representation
-toRegistration :: Signal i a -> Maybe (ReplyRegistration i)
+toRegistration :: Signal -> Maybe ReplyRegistration
 toRegistration sig = case rType (signalCommand sig) of
                         Nothing -> Nothing
                         Just rt -> Just (ReplyRegistration [rt] origin)
     where origin = nodePeer (signalSource sig)
 
-          rType :: Command i a -> Maybe (ReplyType i)
+          rType :: Command -> Maybe ReplyType
           rType  PONG                  = Just  R_PONG
           rType (RETURN_NODES _ nid _) = Just (R_RETURN_NODES nid)
           rType _                      = Nothing

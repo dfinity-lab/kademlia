@@ -39,7 +39,7 @@ import           DFINITY.Discovery.Utils     (hour, minute)
 -- |
 -- This type encompasses all configuration parameters for a running Kademlia
 -- instance.
-data KademliaConfig i
+data KademliaConfig
   = KademliaConfig
     { configK               :: !Int
       -- ^ Queries use the @k@ nearest heighbours; this is that @k@.
@@ -94,7 +94,7 @@ data KademliaConfig i
       --   out from its bucket.
       --
       --   FIXME: this should be a type of positive numbers
-    , configSignatureScheme :: !(SignatureScheme IO i)
+    , configSignatureScheme :: !(SignatureScheme IO)
       -- ^ FIXME: doc
     }
 
@@ -109,7 +109,7 @@ defaultRoutingSharingN :: Int
 defaultRoutingSharingN = uncurry (+) $ defaultK `divMod` 2
 
 -- | FIXME: doc
-defaultConfig :: KademliaConfig i
+defaultConfig :: KademliaConfig
 defaultConfig
   = KademliaConfig
     { configK               = defaultK
@@ -128,29 +128,29 @@ defaultConfig
 
 -- |
 -- A monad transformer that gives access to a 'KademliaConfig'.
-newtype WithConfigT i m a
+newtype WithConfigT m a
   = WithConfigT
-    { getWithConfigT :: ReaderT (KademliaConfig i) m a
+    { getWithConfigT :: ReaderT KademliaConfig m a
     }
   deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
 
 --------------------------------------------------------------------------------
 
 -- | FIXME: doc
-type WithConfig i a = WithConfigT i Identity a
+type WithConfig a = WithConfigT Identity a
 
 --------------------------------------------------------------------------------
 
 -- | FIXME: doc
-getConfig :: Monad m => WithConfigT i m (KademliaConfig i)
+getConfig :: Monad m => WithConfigT m KademliaConfig
 getConfig = WithConfigT ask
 
 -- | FIXME: doc
-usingConfigT :: WithConfigT i m a -> KademliaConfig i -> m a
+usingConfigT :: WithConfigT m a -> KademliaConfig -> m a
 usingConfigT f cfg = flip runReaderT cfg $ getWithConfigT f
 
 -- | FIXME: doc
-usingConfig :: WithConfig i a -> KademliaConfig i -> a
+usingConfig :: WithConfig a -> KademliaConfig -> a
 usingConfig f cfg = runIdentity $ usingConfigT f cfg
 
 --------------------------------------------------------------------------------

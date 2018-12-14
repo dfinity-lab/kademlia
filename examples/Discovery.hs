@@ -12,6 +12,7 @@ import qualified Data.ByteString           as B
 import qualified Data.ByteString.Char8     as C
 import           Data.ByteString.Lazy      (fromStrict, toStrict)
 import qualified DFINITY.Discovery         as K
+import qualified DFINITY.Discovery.Types   as K
 import           GHC.Conc                  (threadDelay)
 import           Network                   (PortNumber)
 import           System.Environment        (getArgs)
@@ -21,23 +22,7 @@ import           System.Random.Shuffle     (shuffleM)
 data Pong = Pong
           deriving (Eq, Show)
 
-instance K.Serialize Pong where
-    toBS = toBSBinary
-    fromBS = fromBSBinary
-
 type KademliaValue = Pong
-newtype KademliaID = KademliaID B.ByteString
-                   deriving (Show, Eq, Ord)
-
-type KademliaInstance = K.KademliaInstance KademliaID KademliaValue
-instance K.Serialize KademliaID where
-    toBS (KademliaID bs)
-        | B.length bs >= kIdLength = B.take kIdLength bs
-        | otherwise                = error $ "KademliaID too short!"
-
-    fromBS bs
-        | B.length bs >= kIdLength = Right . first KademliaID . B.splitAt kIdLength $ bs
-        | otherwise                = Left "ByteString too short!"
 
 instance Binary Pong where
   put _ = putWord8 1
@@ -49,10 +34,10 @@ instance Binary Pong where
 
 data NodeConfig
   = NodeConfig
-    { ncInstance  :: KademliaInstance
+    { ncInstance  :: K.KademliaInstance
     , ncNodeIndex :: Int
     , ncPort      :: PortNumber
-    , ncKey       :: KademliaID
+    , ncKey       :: K.Ident
     , ncBctEdges  :: Int
     }
   deriving ()
@@ -71,15 +56,6 @@ kIdLength = 20
 
 randomSeed :: Integral a => a
 randomSeed = 123
-
-toBSBinary :: Binary b => b -> B.ByteString
-toBSBinary = toStrict . encode
-
-fromBSBinary :: Binary b => B.ByteString -> Either String (b, B.ByteString)
-fromBSBinary bs =
-    case decodeOrFail $ fromStrict bs of
-        Left (_, _, errMsg)  -> Left errMsg
-        Right (rest, _, res) -> Right (res, toStrict rest)
 
 parseCommand :: String -> Command
 parseCommand s = case words s of
@@ -133,7 +109,7 @@ executeCommand (Dump name) = do
     lift $ appendFile ("log/" ++ name ++ show idx ++ ".log") $
         (listToStr $ concat buckets) ++ (unlines $ map (("edge " ++) . show) edges)
 
-connectToPeer :: KademliaInstance -> PortNumber -> B.ByteString -> IO K.JoinResult
+connectToPeer :: K.KademliaInstance -> PortNumber -> B.ByteString -> IO K.JoinResult
 connectToPeer inst peerPort _ = K.joinNetwork inst (K.Peer "127.0.0.1" peerPort)
 
 main :: IO ()
@@ -160,7 +136,7 @@ main = do
 
     putStrLn $ "peerIndex " ++ show peerIndex
     putStrLn $ "peerPort " ++ show peerPort
-    kInstance <- K.createL ("127.0.0.1", port) ("127.0.0.1", port) (KademliaID key) config logInfo logError
+    kInstance <- K.createL ("127.0.0.1", port) ("127.0.0.1", port) (K.Ident key) config logInfo logError
     when (peerPort /= 0) $ do
         putStrLn "Connecting to peer"
         r <- connectToPeer kInstance peerPort peerKey
@@ -170,7 +146,7 @@ main = do
     let state = NodeConfig { ncInstance  = kInstance
                            , ncNodeIndex = nodeIndex
                            , ncPort      = fromIntegral port
-                           , ncKey       = KademliaID key
+                           , ncKey       = K.Ident key
                            , ncBctEdges  = bctEdges
                            }
     commands <- map parseCommand . lines <$> getContents

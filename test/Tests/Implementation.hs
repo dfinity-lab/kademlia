@@ -35,22 +35,21 @@ import           DFINITY.Discovery.Config   (defaultK, defaultRoutingSharingN)
 import           DFINITY.Discovery.Instance
                  (BanState (..), KademliaInstance (..), KademliaState (..))
 import qualified DFINITY.Discovery.Tree     as T
-import           DFINITY.Discovery.Types    (Node (..), Peer (..))
+import           DFINITY.Discovery.Types    (Ident (..), Node (..), Peer (..))
 
-import           Tests.TestTypes            (IdBunch (..), IdType (..))
+import           Tests.TestTypes            (IdBunch (..))
 
 --------------------------------------------------------------------------------
 
 constructNetwork
-  :: IdBunch IdType
-  -> PropertyM IO [KademliaInstance IdType String]
+  :: IdBunch
+  -> PropertyM IO [KademliaInstance]
 constructNetwork idBunch = run $ do
   let ids = getIds idBunch
   let entryNode = Node (Peer "127.0.0.1" 3123) (head ids)
-  let createInst port ident
-        = K.create ("127.0.0.1", port) ("127.0.0.1", port) ident
+  let createInst port = K.create ("127.0.0.1", port) ("127.0.0.1", port)
   instances <- zipWithM createInst [3123..] ids
-               :: IO [KademliaInstance IdType String]
+               :: IO [KademliaInstance]
   forM_ (tail instances) $ \inst -> do
     K.joinNetwork inst (nodePeer entryNode)
   pure instances
@@ -59,7 +58,7 @@ constructNetwork idBunch = run $ do
 
 joinNetworkVerifier
   :: Int
-  -> IdBunch IdType
+  -> IdBunch
   -> Property
 joinNetworkVerifier bucketThreshold idBunch = monadicIO $ do
   let isBucketFilled inst = do
@@ -76,7 +75,7 @@ joinNetworkVerifier bucketThreshold idBunch = monadicIO $ do
 
 -- | Checks that nodes contain at least @k@ neighbours in their buckets
 joinCheck
-  :: IdBunch IdType
+  :: IdBunch
   -> Property
 joinCheck = joinNetworkVerifier defaultK
 
@@ -87,7 +86,7 @@ joinCheck = joinNetworkVerifier defaultK
 -- [CSL-258] and [CSL-260]
 -- Thus node should contain at least @k + k/2@ nodes.
 joinFullCheck
-  :: IdBunch IdType
+  :: IdBunch
   -> Property
 joinFullCheck = joinNetworkVerifier (defaultK + defaultRoutingSharingN)
 
@@ -96,11 +95,10 @@ joinFullCheck = joinNetworkVerifier (defaultK + defaultRoutingSharingN)
 -- | Make sure an offline peer is detected
 nodeDownCheck :: Assertion
 nodeDownCheck = do
-  let idA = IT (BSC8.pack "hello")
-  let idB = IT (BSC8.pack "herro")
+  let idA = Ident (BSC8.pack "hello")
+  let idB = Ident (BSC8.pack "salve")
   let entryNode = Node (Peer "127.0.0.1" 1124) idB
   inst <- K.create ("127.0.0.1", 1123) ("127.0.0.1", 1123) idA
-          :: IO (KademliaInstance IdType String)
   joinResult <- K.joinNetwork inst (nodePeer entryNode)
   K.close inst
 
@@ -109,13 +107,12 @@ nodeDownCheck = do
 --------------------------------------------------------------------------------
 
 -- | Make sure banNode works correctly
-joinBannedCheck :: IdType -> IdType -> Property
+joinBannedCheck :: Ident -> Ident -> Property
 joinBannedCheck idA idB = monadicIO $ do
   let entryNode = Node (Peer "127.0.0.1" 1124) idB
 
   joinResult <- run $ do
     inst <- K.create ("127.0.0.1", 1123) ("127.0.0.1", 1123) idA
-            :: IO (KademliaInstance IdType String)
 
     K.banNode inst entryNode BanForever
     joinResult <- K.joinNetwork inst (nodePeer entryNode)
@@ -128,9 +125,9 @@ joinBannedCheck idA idB = monadicIO $ do
 
 --------------------------------------------------------------------------------
 
-lookupNodesCheck :: IdBunch IdType -> Property
+lookupNodesCheck :: IdBunch -> Property
 lookupNodesCheck ids = monadicIO $ do
-  let check :: IdType -> Maybe (Node IdType) -> Bool
+  let check :: Ident -> Maybe Node -> Bool
       check nid = maybe False ((== nid) . nodeId)
   let tryLookup inst nid = check nid <$> K.lookupNode inst nid
 

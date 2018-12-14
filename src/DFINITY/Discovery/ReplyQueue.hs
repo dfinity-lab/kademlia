@@ -40,7 +40,7 @@ import           Data.List               (delete, find)
 import           Data.Maybe              (isJust)
 
 import           DFINITY.Discovery.Types
-                 (Command (..), Node (nodePeer), Peer,
+                 (Command (..), Ident, Node (nodePeer), Peer,
                  Signal (signalCommand, signalSource))
 import           DFINITY.Discovery.Utils (threadDelay)
 
@@ -51,19 +51,19 @@ import           DFINITY.Discovery.Utils (threadDelay)
 --
 -- Note that these are only those 'Command' types which are replies to some
 -- sort of request.
-data ReplyType i
+data ReplyType
   = R_PONG
-  | R_RETURN_VALUE !i
-  | R_RETURN_NODES !i
+  | R_RETURN_VALUE !Ident
+  | R_RETURN_NODES !Ident
   deriving (Eq, Show)
 
 --------------------------------------------------------------------------------
 
 -- |
 -- The representation of registered replies.
-data ReplyRegistration i
+data ReplyRegistration
   = ReplyRegistration
-    { replyTypes  :: ![ReplyType i]
+    { replyTypes  :: ![ReplyType]
       -- ^ FIXME: doc
     , replyOrigin :: !Peer
       -- ^ FIXME: doc
@@ -74,7 +74,7 @@ data ReplyRegistration i
 
 -- |
 -- Convert a 'Signal' into its 'ReplyRegistration' representation.
-toRegistration :: Reply i a -> Maybe (ReplyRegistration i)
+toRegistration :: Reply -> Maybe ReplyRegistration
 toRegistration Closed        = Nothing
 toRegistration (Timeout reg) = Just reg
 toRegistration (Answer sig)  = do
@@ -90,7 +90,7 @@ toRegistration (Answer sig)  = do
 
 -- |
 -- Compare whether two 'ReplyRegistration's match
-matchRegistrations :: (Eq i) => ReplyRegistration i -> ReplyRegistration i -> Bool
+matchRegistrations :: ReplyRegistration -> ReplyRegistration -> Bool
 matchRegistrations (ReplyRegistration rtsA idA) (ReplyRegistration rtsB idB)
   = (idA == idB) && (all (`elem` rtsA) rtsB || all (`elem` rtsB) rtsA)
 
@@ -98,9 +98,9 @@ matchRegistrations (ReplyRegistration rtsA idA) (ReplyRegistration rtsB idB)
 
 -- |
 -- The actual type of a reply.
-data Reply i a
-  = Answer  !(Signal i a)
-  | Timeout !(ReplyRegistration i)
+data Reply
+  = Answer  !Signal
+  | Timeout !ReplyRegistration
   | Closed
   deriving (Eq, Show)
 
@@ -108,14 +108,14 @@ data Reply i a
 
 -- |
 -- The actual type representing a reply queue.
-data ReplyQueue i a
+data ReplyQueue
   = ReplyQueue
-    { replyQueueQueue        :: !(STM.TVar [ExpectedResponse i a])
+    { replyQueueQueue        :: !(STM.TVar [ExpectedResponse])
       -- ^ Queue of expected responses
-    , replyQueueDispatchChan :: !(Chan (Reply i a))
+    , replyQueueDispatchChan :: !(Chan Reply)
       -- ^ Channel for initial receiving of messages.
       --   Messages from this channel will be dispatched (via @dispatch@)
-    , replyQueueRequestChan  :: !(Chan (Reply i a))
+    , replyQueueRequestChan  :: !(Chan Reply)
       -- ^ This channel is needed for accepting requests from nodes.
       --   Only request will be processed, reply will be ignored.
     , replyQueueLogInfo      :: !(String -> IO ())
@@ -133,11 +133,11 @@ data ReplyQueue i a
 
 -- |
 -- FIXME: doc
-data ExpectedResponse i a
+data ExpectedResponse
   = ExpectedResponse
-    { expectedResponseRegistration :: !(ReplyRegistration i)
+    { expectedResponseRegistration :: !ReplyRegistration
       -- ^ FIXME: doc
-    , expectedResponseReplyChan    :: !(Chan (Reply i a))
+    , expectedResponseReplyChan    :: !(Chan Reply)
       -- ^ FIXME: doc
     , expectedResponseThreadID     :: !Conc.ThreadId
       -- ^ FIXME: doc
@@ -148,7 +148,7 @@ data ExpectedResponse i a
 
 -- |
 -- Create a new 'ReplyQueue'.
-emptyReplyQueue :: IO (ReplyQueue i a)
+emptyReplyQueue :: IO ReplyQueue
 emptyReplyQueue = emptyReplyQueueL (const $ pure ()) (const $ pure ())
 
 --------------------------------------------------------------------------------
@@ -158,7 +158,7 @@ emptyReplyQueue = emptyReplyQueueL (const $ pure ()) (const $ pure ())
 emptyReplyQueueL
   :: (String -> IO ())
   -> (String -> IO ())
-  -> IO (ReplyQueue i a)
+  -> IO ReplyQueue
 emptyReplyQueueL logInfo logError = do
   ReplyQueue
     <$> STM.atomically (STM.newTVar [])
@@ -172,9 +172,9 @@ emptyReplyQueueL logInfo logError = do
 -- |
 -- Register a channel as a handler for a reply.
 register
-  :: ReplyRegistration i
-  -> ReplyQueue i a
-  -> Chan (Reply i a)
+  :: ReplyRegistration
+  -> ReplyQueue
+  -> Chan Reply
   -> IO ()
 register reg rq chan = do
   tid <- timeoutThread reg rq
@@ -188,7 +188,7 @@ register reg rq chan = do
 
 -- |
 -- FIXME: doc
-timeoutThread :: ReplyRegistration i -> ReplyQueue i a -> IO Conc.ThreadId
+timeoutThread :: ReplyRegistration -> ReplyQueue -> IO Conc.ThreadId
 timeoutThread reg rq = do
   Conc.forkIO $ do
     -- Wait 5 seconds
@@ -206,7 +206,7 @@ timeoutThread reg rq = do
 -- |
 -- Dispatch a reply over a registered handler.
 -- If there is no handler, dispatch it to the default one.
-dispatch :: (Show i, Eq i) => Reply i a -> ReplyQueue i a -> IO ()
+dispatch :: Reply -> ReplyQueue -> IO ()
 dispatch reply rq = do
   let matches regA (ExpectedResponse regB _ _) = matchRegistrations regA regB
 
@@ -249,9 +249,8 @@ dispatch reply rq = do
 -- |
 -- FIXME: doc
 expectedReply
-  :: (Show i, Eq i)
-  => Reply i a
-  -> ReplyQueue i a
+  :: Reply
+  -> ReplyQueue
   -> IO Bool
 expectedReply reply rq = do
   let matches regA (ExpectedResponse regB _ _) = matchRegistrations regA regB
@@ -265,7 +264,7 @@ expectedReply reply rq = do
 
 -- |
 -- Send 'Closed' signal to all handlers and empty the 'ReplyQueue'.
-flush :: ReplyQueue i a -> IO ()
+flush :: ReplyQueue -> IO ()
 flush rq = do
   rQueue <- STM.atomically $ do
     rQueue <- STM.readTVar (replyQueueQueue rq)

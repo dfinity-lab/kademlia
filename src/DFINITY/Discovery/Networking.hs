@@ -53,17 +53,17 @@ import           DFINITY.Discovery.ReplyQueue
                  (Reply (..), ReplyQueue (replyQueueDispatchChan),
                  ReplyRegistration, flush, register)
 import           DFINITY.Discovery.Types
-                 (Command, Peer (..), Serialize (..), toPeer)
+                 (Command, Ident, Peer (..), toPeer)
 
 --------------------------------------------------------------------------------
 
 -- | A handle to a UDP socket running the Kademlia connection
-data KademliaHandle i a
+data KademliaHandle
   = KademliaHandle
     { handleSocket     :: !Socket
     , handleSendThread :: !ThreadId
-    , handleSendChan   :: !(Chan (Command i a, Peer))
-    , handleReplyQueue :: !(ReplyQueue i a)
+    , handleSendChan   :: !(Chan (Command, Peer))
+    , handleReplyQueue :: !ReplyQueue
     , handleRecvThread :: !(MVar ThreadId)
     , handleLogInfo    :: !(String -> IO ())
     , handleLogError   :: !(String -> IO ())
@@ -73,7 +73,7 @@ data KademliaHandle i a
 --------------------------------------------------------------------------------
 
 handleLogError'
-  :: KademliaHandle i a
+  :: KademliaHandle
   -> SomeException
   -> IO ()
 handleLogError' h = handleLogError h . show
@@ -81,12 +81,11 @@ handleLogError' h = handleLogError h . show
 --------------------------------------------------------------------------------
 
 openOn
-  :: (Show i, Serialize i, Serialize a)
-  => IP
+  :: IP
   -> PortNumber
-  -> i
-  -> ReplyQueue i a
-  -> IO (KademliaHandle i a)
+  -> Ident
+  -> ReplyQueue
+  -> IO KademliaHandle
 openOn host port id' rq
   = let lim = configMsgSizeLimit defaultConfig
     in openOnL host port id' lim rq (const (pure ())) (const (pure ()))
@@ -97,15 +96,14 @@ openOn host port id' rq
 -- Open a Kademlia connection on specified port and return a corresponding
 -- 'KademliaHandle'.
 openOnL
-  :: (Show i, Serialize i, Serialize a)
-  => IP
+  :: IP
   -> PortNumber
-  -> i
+  -> Ident
   -> Int
-  -> ReplyQueue i a
+  -> ReplyQueue
   -> (String -> IO ())
   -> (String -> IO ())
-  -> IO (KademliaHandle i a)
+  -> IO KademliaHandle
 openOnL host port id' lim rq logInfo logError = withSocketsDo $ do
   -- Get address to bind to
   serveraddrs <- getAddrInfo
@@ -131,14 +129,13 @@ openOnL host port id' lim rq logInfo logError = withSocketsDo $ do
 --------------------------------------------------------------------------------
 
 sendProcessL
-    :: (Show i, Serialize i, Serialize a)
-    => Socket
-    -> Int
-    -> i
-    -> Chan (Command i a, Peer)
-    -> (String -> IO ())
-    -> (String -> IO ())
-    -> IO ()
+  :: Socket
+  -> Int
+  -> Ident
+  -> Chan (Command, Peer)
+  -> (String -> IO ())
+  -> (String -> IO ())
+  -> IO ()
 sendProcessL sock lim nid chan logInfo logError = do
   let logSomeError' :: SomeException -> IO ()
       logSomeError' e = logError $ "Caught error " ++ show e
@@ -161,10 +158,10 @@ sendProcessL sock lim nid chan logInfo logError = do
                           (Just (show port))
 
         -- Send the signal
-        case serialize lim nid cmd of
-          Left  err  -> logError err
-          Right sigs -> do let addr = addrAddress peeraddr
-                           forM_ sigs (\sig -> S.sendTo sock sig addr)
+        let signals = [serialize lim nid cmd]
+        let addr = addrAddress peeraddr
+        forM_ signals $ \signal -> do
+          S.sendTo sock signal addr
 
 --------------------------------------------------------------------------------
 
@@ -175,8 +172,7 @@ sendProcessL sock lim nid chan logInfo logError = do
 --
 --   This throws an exception if called a second time.
 startRecvProcess
-  :: (Show i, Serialize i, Serialize a)
-  => KademliaHandle i a
+  :: KademliaHandle
   -> IO ()
 startRecvProcess kh = do
   let finalize = do
@@ -192,13 +188,14 @@ startRecvProcess kh = do
       Nothing -> handleLogError kh ("Unknown peer " ++ show addr)
       Just p  -> do
         -- Try parsing the signal
-        case parse p received of
+        case parse received of
           Left _ -> do
             handleLogError kh ("Can't parse "
                                ++ show (BS.length received)
                                ++ " bytes from "
                                ++ show peer)
-          Right sig -> do
+          Right f -> do
+            let sig = f p
             handleLogInfo kh ("Received signal "
                               ++ show sig
                               ++ " from "
@@ -218,9 +215,9 @@ startRecvProcess kh = do
 -- Send a Signal to a Peer over the connection corresponding to the
 -- 'KademliaHandle'.
 send
-  :: KademliaHandle i a
+  :: KademliaHandle
   -> Peer
-  -> Command i a
+  -> Command
   -> IO ()
 send kh peer cmd = writeChan (handleSendChan kh) (cmd, peer)
 
@@ -228,9 +225,9 @@ send kh peer cmd = writeChan (handleSendChan kh) (cmd, peer)
 
 -- | Register a handler channel for a 'Reply'.
 expect
-  :: KademliaHandle i a
-  -> ReplyRegistration i
-  -> Chan (Reply i a)
+  :: KademliaHandle
+  -> ReplyRegistration
+  -> Chan Reply
   -> IO ()
 expect kh reg = register reg . handleReplyQueue $ kh
 
@@ -238,7 +235,7 @@ expect kh reg = register reg . handleReplyQueue $ kh
 
 -- | Close the connection corresponding to a 'KademliaHandle'.
 closeK
-  :: KademliaHandle i a
+  :: KademliaHandle
   -> IO ()
 closeK kh = do
   -- Kill recvThread
