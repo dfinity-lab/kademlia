@@ -72,6 +72,9 @@ wrapPort = fromIntegral
 data Node i
   = Node
     { nodePeer :: !Peer
+      -- FIXME: switch to MaxHeap Timestamp Peer
+      --        where `type MaxHeap p a = Heap (Entry (Down p) a)`
+      --        is using the `heaps` package
     , nodeId   :: !i
     }
   deriving (Eq, Ord, Generic)
@@ -104,6 +107,8 @@ class Serialize a where
 --------------------------------------------------------------------------------
 
 -- | A Structure made up of bits, represented as a list of Bools
+--
+--   FIXME: this is really bad
 type ByteStruct = [Bool]
 
 --------------------------------------------------------------------------------
