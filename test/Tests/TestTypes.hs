@@ -96,7 +96,7 @@ newtype IdBunch
   deriving (Show)
 
 instance Arbitrary IdBunch where
-  arbitrary = IdBunch <$> vectorOf 30 arbitrary `suchThat` individual (==)
+  arbitrary = IdBunch <$> vectorOf 40 arbitrary `suchThat` individual (==)
 
 instance Arbitrary BanState where
   arbitrary = oneof
