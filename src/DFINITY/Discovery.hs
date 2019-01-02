@@ -176,7 +176,7 @@ create bindAddr extAddr id' = do
 --------------------------------------------------------------------------------
 
 -- |
--- Same as 'create', but with logging
+-- Same as 'create', but with logging.
 createL
   :: (IP, PortNumber)
   -- ^ Bind address

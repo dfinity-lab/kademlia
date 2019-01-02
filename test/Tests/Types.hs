@@ -15,11 +15,10 @@ module Tests.Types
 
 --------------------------------------------------------------------------------
 
-import           Data.Bits                (testBit)
-import qualified Data.ByteString          as B
-import           Test.QuickCheck          ()
+import           Data.Bits               (testBit)
+import qualified Data.ByteString         as B
+import           Test.QuickCheck         ()
 
-import           DFINITY.Discovery.Config (defaultConfig, usingConfig)
 import           DFINITY.Discovery.Types
                  (Ident (..), fromByteStruct, toByteStruct)
 
