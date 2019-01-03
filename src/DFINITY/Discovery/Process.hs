@@ -29,6 +29,7 @@ import           Data.Map.Strict              (Map)
 import qualified Data.Map.Strict              as Map
 import           Data.Maybe                   (isNothing)
 import           Data.Time.Clock.POSIX        (getPOSIXTime)
+import qualified Data.Vector                  as Vector
 import           System.Random                (newStdGen)
 
 import           DFINITY.Discovery.Config     (KademliaConfig (..), usingConfig)
@@ -72,9 +73,9 @@ receivingProcess inst = do
   let (KademliaInstance _ h _ _ _) = inst
 
   let isResponse :: Reply -> Bool
-      isResponse (Answer (Signal _ PONG))                 = True
-      isResponse (Answer (Signal _ (RETURN_NODES _ _ _))) = True
-      isResponse _                                        = False
+      isResponse (Answer (Signal _ PONG))               = True
+      isResponse (Answer (Signal _ (RETURN_NODES _ _))) = True
+      isResponse _                                      = False
 
   forever $ (`catch` handleLogError' h) $ do
     let rq = handleReplyQueue h
@@ -124,9 +125,11 @@ receivingProcessDo inst reply rq = do
           let closestKnown = T.findClosest tree originId 1 `usingConfig` cfg
           let ownId        = T.extractId tree
           let self         = node { nodeId = ownId }
-          let bucket       = self:closestKnown
+          let bucket       = Vector.fromList (self : closestKnown)
           -- Find out closest known node
-          let closestId    = nodeId (head (sortByDistanceTo bucket originId))
+          let closestId    = nodeId
+                             $ Vector.head
+                             $ sortByDistanceTo bucket originId
 
 
           -- This node can be assumed to be closest to the new node
@@ -237,24 +240,24 @@ handleCommand
 handleCommand cmd peer inst
   = case cmd of
       -- Simply answer a 'PING' with a 'PONG'.
-      PING                 -> send (instanceHandle inst) peer PONG
+      PING               -> send (instanceHandle inst) peer PONG
       -- Return a 'KBucket' with the closest 'Node's.
-      (FIND_NODE nid)      -> returnNodes peer nid inst
+      (FIND_NODE nid)    -> returnNodes peer nid inst
       -- In all other cases, do nothing.
-      PONG                 -> pure ()
-      (RETURN_NODES _ _ _) -> pure ()
+      PONG               -> pure ()
+      (RETURN_NODES _ _) -> pure ()
       -- Insert the value into the values store and start the expiration process
-      (STORE key value)    -> do
+      (STORE key value)  -> do
         insertValue key value inst
         void $ forkIO $ expirationProcess inst key
       -- Return the value, if known, or the closest other known Nodes
-      (FIND_VALUE key)     -> do
+      (FIND_VALUE key)   -> do
         result <- lookupValue key inst
         let h = instanceHandle inst
         case result of
           Just value -> liftIO $ send h peer (RETURN_VALUE key value)
           Nothing    -> returnNodes peer key inst
-      (RETURN_VALUE _ _)   -> pure ()
+      (RETURN_VALUE _ _) -> pure ()
 
 -- | Return a KBucket with the closest Nodes to a supplied Id
 returnNodes
@@ -275,10 +278,11 @@ returnNodes peer nid inst = do
   -- clear what to send to the peer, and so nothing is sent, and the peer
   -- times out. This causes joinNetwork to time out for the first node to
   -- join (the existing node doesn't know any peers).
-  let nodes = case closest ++ randomNodes of
-                [] -> [ourNode]
-                xs -> xs
-  liftIO $ send h peer (RETURN_NODES 1 nid nodes)
+  let combinedNodes = Vector.fromList closest <> Vector.fromList randomNodes
+  let nodes = if Vector.null combinedNodes
+              then Vector.singleton ourNode
+              else combinedNodes
+  liftIO $ send h peer (RETURN_NODES nid nodes)
 
 -- | Send 'PING' and expect a 'PONG'.
 sendPing

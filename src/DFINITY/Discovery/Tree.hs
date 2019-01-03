@@ -55,6 +55,8 @@ import qualified Data.List                as List
 import           Data.Map.Lazy            (Map)
 import qualified Data.Map.Lazy            as Map
 
+import qualified Data.Vector              as Vector
+
 import           DFINITY.Discovery.Config
                  (KademliaConfig (..), WithConfig, getConfig)
 import           DFINITY.Discovery.Types
@@ -351,7 +353,9 @@ findClosest
   -> WithConfig [Node]
 findClosest (NodeTree idStruct treeElem _) nid n = do
   let chooseClosest :: [Node] -> [Node]
-      chooseClosest nodes = take n (sortByDistanceTo nodes nid)
+      chooseClosest nodes = Vector.toList
+                            $ Vector.take n
+                            $ sortByDistanceTo (Vector.fromList nodes) nid
 
   -- FIXME: combine left and right clauses in `go`
 

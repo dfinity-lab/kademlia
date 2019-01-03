@@ -37,6 +37,8 @@ import           Control.Monad.Trans.State    (StateT, evalStateT, gets, modify)
 import           Data.List                    (delete, find, (\\))
 import           Data.Map.Strict              (Map)
 import qualified Data.Map.Strict              as Map
+import           Data.Vector                  (Vector)
+import qualified Data.Vector                  as Vector
 import           Data.Word                    (Word8)
 
 import           DFINITY.Discovery.Config     (KademliaConfig (..), usingConfig)
@@ -78,9 +80,9 @@ lookup inst nid = runLookup go inst nid
       -- value
       known  <- gets lookupStateKnown
       polled <- gets lookupStatePolled
-      let rest = polled \\ known
-      unless (null rest) $ do
-        let cachePeer = nodePeer $ head $ sortByDistanceTo rest nid
+      let rest = Vector.fromList (polled \\ known)
+      unless (Vector.null rest) $ do
+        let cachePeer = nodePeer $ Vector.head $ sortByDistanceTo rest nid
         liftIO (send (instanceHandle inst) cachePeer (STORE nid value))
 
       -- Return the value
@@ -88,7 +90,7 @@ lookup inst nid = runLookup go inst nid
 
     -- When receiving a RETURN_NODES command, throw the nodes into the
     -- lookup loop and continue the lookup
-    checkSignal (Signal _ (RETURN_NODES _ _ nodes)) =
+    checkSignal (Signal _ (RETURN_NODES _ nodes)) =
         continueLookup nodes sendS continue cancel
     checkSignal _ = error "Fundamental error in unhandled query @lookup@"
 
@@ -120,7 +122,7 @@ store inst key val = runLookup go inst key
     go = startLookup (instanceConfig inst) sendS end checkSignal
 
     -- Always add the nodes into the loop and continue the lookup
-    checkSignal (Signal _ (RETURN_NODES _ _ nodes)) =
+    checkSignal (Signal _ (RETURN_NODES _ nodes)) =
         continueLookup nodes sendS continue end
     checkSignal _ = error "Meet unknown signal in store"
 
@@ -134,16 +136,16 @@ store inst key val = runLookup go inst key
     -- Run the lookup as long as possible, to make sure the nodes closest
     -- to the key were polled.
     end = do
-        polled <- gets lookupStatePolled
+        polled <- Vector.fromList <$> gets lookupStatePolled
 
-        unless (null polled) $ do
+        unless (Vector.null polled) $ do
             let h = instanceHandle inst
                 k' = configK $ instanceConfig inst
                 -- Don't select more than k peers
                 peerNum = if length polled > k' then k' else length polled
                 -- Select the peers closest to the key
-                storePeers = map nodePeer
-                             $ take peerNum
+                storePeers = Vector.map nodePeer
+                             $ Vector.take peerNum
                              $ sortByDistanceTo polled key
 
             -- Send them a STORE command
@@ -186,7 +188,7 @@ joinNetwork inst initPeer
       pure (T.extractId tree)
 
     -- Also insert all returned nodes to our bucket (see [CSL-258])
-    checkSignal (Signal _ (RETURN_NODES _ _ nodes)) = do
+    checkSignal (Signal _ (RETURN_NODES _ nodes)) = do
       forM_ nodes $ \node -> do
         liftIO $ insertNode inst node
       continueLookup nodes sendS continue finish
@@ -228,7 +230,7 @@ lookupNode inst nid = runLookup go inst nid
     --
     -- Also insert all returned nodes to our tree.
     checkSignal :: Signal -> LookupM (Maybe Node)
-    checkSignal (Signal _ (RETURN_NODES _ _ nodes)) = do
+    checkSignal (Signal _ (RETURN_NODES _ nodes)) = do
       forM_ nodes $ \node -> do
         liftIO $ insertNode inst node
       let targetNode = find ((== nid) . nodeId) nodes
@@ -359,7 +361,7 @@ waitForReplyDo withinJoin cancel onSignal = do
   result <- liftIO $ readChan chan
   case result of
     -- If there was a reply
-    Answer sig@(Signal node cmd) -> do
+    Answer sig@(Signal node _cmd) -> do
       banned <- liftIO $ isNodeBanned inst (nodePeer node)
 
       if banned
@@ -375,18 +377,20 @@ waitForReplyDo withinJoin cancel onSignal = do
                  -- it would have to be refreshed
                  liftIO $ insertNode inst node
 
-                 case cmd of
-                   RETURN_NODES n nid _ -> do
-                     toRemove <- maybe True (\s -> s + 1 >= n)
-                                 <$> gets (Map.lookup node . lookupStatePending)
-                     if toRemove
-                       then removeFromPending node
-                       else do modify (modifyPending (Map.adjust (+1) node))
-                               let reg = ReplyRegistration
-                                         [R_RETURN_NODES nid]
-                                         (nodePeer node)
-                               liftIO $ expect (instanceHandle inst) reg chan
-                   _ -> removeFromPending node
+                 removeFromPending node
+                 -- FIXME: remove the commented-out code below
+                 -- case cmd of
+                 --   RETURN_NODES n nid _ -> do
+                 --     toRemove <- maybe True (\s -> s + 1 >= n)
+                 --                 <$> gets (Map.lookup node . lookupStatePending)
+                 --     if toRemove
+                 --       then removeFromPending node
+                 --       else do modify (modifyPending (Map.adjust (+1) node))
+                 --               let reg = ReplyRegistration
+                 --                         [R_RETURN_NODES nid]
+                 --                         (nodePeer node)
+                 --               liftIO $ expect (instanceHandle inst) reg chan
+                 --   _ -> removeFromPending node
 
                  -- Call the signal handler
                  onSignal sig)
@@ -406,7 +410,7 @@ waitForReplyDo withinJoin cancel onSignal = do
 --
 -- This is the meat of Kademlia lookups.
 continueLookup
-  :: [Node]
+  :: Vector Node
   -> (Node -> LookupM ())
   -> LookupM a
   -> LookupM a
@@ -414,21 +418,21 @@ continueLookup
 continueLookup nodes signalAction continue end = do
   let closest
         :: KademliaInstance
-        -> [Node]
-        -> LookupM [Node]
+        -> Vector Node
+        -> LookupM (Vector Node)
       closest inst known = do
         cid    <- gets lookupStateTargetId
-        polled <- gets lookupStatePolled
+        polled <- Vector.fromList <$> gets lookupStatePolled
         let cfg = instanceConfig inst
 
         -- Return the k closest nodes, the lookup had contact with
-        pure (take
+        pure (Vector.take
               (configK cfg)
-              (sortByDistanceTo (known ++ polled) cid))
+              (sortByDistanceTo (known <> polled) cid))
 
   let allClosestPolled
         :: KademliaInstance
-        -> [Node]
+        -> Vector Node
         -> LookupM Bool
       allClosestPolled inst known = do
         polled       <- gets lookupStatePolled
@@ -436,7 +440,7 @@ continueLookup nodes signalAction continue end = do
         pure (all (`elem` polled) closestKnown)
 
   inst    <- gets lookupStateInstance
-  known   <- gets lookupStateKnown
+  known   <- Vector.fromList <$> gets lookupStateKnown
   nid     <- gets lookupStateTargetId
   pending <- gets lookupStatePending
   polled  <- gets lookupStatePolled
@@ -444,20 +448,20 @@ continueLookup nodes signalAction continue end = do
   let cfg = instanceConfig inst
 
   -- Pick the k closest known nodes that haven't been polled yet
-  let newKnown = take (configK cfg)
+  let newKnown = Vector.take (configK cfg)
                  $ (\xs -> sortByDistanceTo xs nid)
-                 $ filter (`notElem` polled) (nodes ++ known)
+                 $ Vector.filter (`notElem` polled) (nodes <> known)
 
   -- Check if k closest nodes have been polled already
   polledNeighbours <- allClosestPolled inst newKnown
 
   if | not (null newKnown) && not polledNeighbours -> do
          -- Send signal to the closest node that hasn't been polled yet
-         let next = head (sortByDistanceTo newKnown nid)
+         let next = Vector.head (sortByDistanceTo newKnown nid)
          signalAction next
 
          -- Update known
-         modify $ \s -> s { lookupStateKnown = newKnown }
+         modify $ \s -> s { lookupStateKnown = Vector.toList newKnown }
 
          -- Continue the lookup
          continue

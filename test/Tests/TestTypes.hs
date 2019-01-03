@@ -33,6 +33,8 @@ import           Test.QuickCheck.Instances  ()
 import           Data.IP                    (IP (IPv4, IPv6))
 import qualified Data.IP                    as IP
 
+import qualified Data.Vector                as Vector
+
 import           DFINITY.Discovery.Instance (BanState (..))
 import           DFINITY.Discovery.Types
                  (Command (..), Ident (..), Node (..), Peer (..), Signal (..))
@@ -66,7 +68,9 @@ instance Arbitrary Command where
               [ pure PING
               , pure PONG
               , FIND_NODE <$> arbitrary
-              , RETURN_NODES 1 <$> arbitrary <*> vectorOf 30 arbitrary
+              , RETURN_NODES
+                <$> arbitrary
+                <*> (Vector.fromList <$> vectorOf 30 arbitrary)
               ]
 
 instance Arbitrary Signal where

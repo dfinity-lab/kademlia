@@ -79,10 +79,10 @@ toRegistration Closed        = Nothing
 toRegistration (Timeout reg) = Just reg
 toRegistration (Answer sig)  = do
   rt <- case signalCommand sig of
-          PONG                   -> Just R_PONG
-          (RETURN_VALUE nid _)   -> Just (R_RETURN_VALUE nid)
-          (RETURN_NODES _ nid _) -> Just (R_RETURN_NODES nid)
-          _                      -> Nothing
+          PONG                 -> Just R_PONG
+          (RETURN_VALUE nid _) -> Just (R_RETURN_VALUE nid)
+          (RETURN_NODES nid _) -> Just (R_RETURN_NODES nid)
+          _                    -> Nothing
   let origin = nodePeer (signalSource sig)
   pure (ReplyRegistration [rt] origin)
 

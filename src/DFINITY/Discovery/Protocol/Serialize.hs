@@ -30,12 +30,22 @@ serialize
   :: Int
   -> Ident
   -> Command
-  -> ByteString
+  -> [ByteString]
 serialize _lim ident command
+  = [serializeCommand ident command]
+--   = case command of
+--       (RETURN_NODES _i _nodes) -> undefined
+--       _                        -> [serializeCommand ident command]
+-- FIXME: use the lim parameter
+
+serializeCommand
+  :: Ident
+  -> Command
+  -> ByteString
+serializeCommand ident command
   = LBS.toStrict
     $ Builder.toLazyByteString
     $ CBOR.toBuilder
     $ encode (ident, command)
--- FIXME: use the lim parameter
 
 --------------------------------------------------------------------------------

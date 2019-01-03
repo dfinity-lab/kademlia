@@ -34,23 +34,28 @@ module DFINITY.Discovery.Types
 
 --------------------------------------------------------------------------------
 
-import           Data.Bits                (setBit, testBit, zeroBits)
-import           Data.Function            (on)
-import           Data.Int                 (Int64)
-import           Data.List                (sortBy)
-import           Data.Word                (Word16, Word8)
-import           GHC.Generics             (Generic)
-import           Network.Socket           (PortNumber (..), SockAddr (..))
+import           Data.Bits                    (setBit, testBit, zeroBits)
+import           Data.Function                (on)
+import           Data.Int                     (Int64)
+import           Data.Word                    (Word16)
+import           GHC.Generics                 (Generic)
+import           Network.Socket               (PortNumber (..), SockAddr (..))
 
-import           Data.ByteString          (ByteString)
-import qualified Data.ByteString          as BS
+import           Data.ByteString              (ByteString)
+import qualified Data.ByteString              as BS
 
-import           Data.IP                  (IP)
-import qualified Data.IP                  as IP
+import           Data.IP                      (IP)
+import qualified Data.IP                      as IP
 
-import           Codec.Serialise          (Serialise, decode, encode)
-import           Codec.Serialise.Decoding (decodeListLen, decodeWord)
-import           Codec.Serialise.Encoding (encodeListLen, encodeWord)
+import           Data.Vector                  (Vector)
+import qualified Data.Vector                  as Vector
+import qualified Data.Vector.Algorithms.Intro as Vector.Sort
+
+import           Control.Monad.ST             (runST)
+
+import           Codec.Serialise              (Serialise, decode, encode)
+import           Codec.Serialise.Decoding     (decodeListLen, decodeWord)
+import           Codec.Serialise.Encoding     (encodeListLen, encodeWord)
 
 --------------------------------------------------------------------------------
 
@@ -148,15 +153,15 @@ instance Show Node where
 
 -- | Sort a bucket by the closeness of its nodes to a given ID.
 sortByDistanceTo
-  :: [Node]
+  :: Vector Node
   -> Ident
-  -> [Node]
+  -> Vector Node
 sortByDistanceTo bucket nid = do
   let f = distance nid . nodeId
-  let pack bk = zip bk (map f bk)
-  let sort = sortBy (compare `on` snd)
-  let unpack = map fst
-  unpack (sort (pack bucket))
+  runST $ do
+    mvec <- Vector.thaw (Vector.zip bucket (Vector.map f bucket))
+    Vector.Sort.sortBy (compare `on` snd) mvec
+    Vector.map fst <$> Vector.unsafeFreeze mvec
 
 --------------------------------------------------------------------------------
 
@@ -233,7 +238,7 @@ data Command
   | PONG
   | STORE        !Ident !Value
   | FIND_NODE    !Ident
-  | RETURN_NODES !Word8 !Ident ![Node]
+  | RETURN_NODES !Ident !(Vector Node)
   | FIND_VALUE   !Ident
   | RETURN_VALUE !Ident !Value
   deriving (Eq)
@@ -245,9 +250,8 @@ instance Serialise Command where
                                         <> encode ident
                                         <> encode payload
   encode (FIND_NODE ident)            = encodeListLen 2 <> encodeWord 3
-                                        <> encode ident
-  encode (RETURN_NODES n ident nodes) = encodeListLen 4 <> encodeWord 4
-                                        <> encode n
+                                      <> encode ident
+  encode (RETURN_NODES ident nodes)   = encodeListLen 3 <> encodeWord 4
                                         <> encode ident
                                         <> encode nodes
   encode (FIND_VALUE ident)           = encodeListLen 2 <> encodeWord 5
@@ -264,23 +268,22 @@ instance Serialise Command where
       (1, 1) -> pure PONG
       (3, 2) -> STORE <$> decode <*> decode
       (2, 3) -> FIND_NODE <$> decode
-      (4, 4) -> RETURN_NODES <$> decode <*> decode <*> decode
+      (3, 4) -> RETURN_NODES <$> decode <*> decode
       (2, 5) -> FIND_VALUE <$> decode
       (3, 6) -> RETURN_VALUE <$> decode <*> decode
       _      -> fail "invalid Command encoding"
 
 instance Show Command where
-  show PING                     = "PING"
-  show PONG                     = "PONG"
-  show (STORE i _)              = "STORE " ++ show i ++ " <data>"
-                                  -- FIXME: encode bytestring as hex here
-  show (FIND_VALUE i)           = "FIND_VALUE " ++ show i
-  show (RETURN_VALUE i _)       = "RETURN_VALUE " ++ show i ++ " <data>"
-                                  -- FIXME: encode bytestring as hex here
-  show (FIND_NODE i)            = "FIND_NODE " ++ show i
-  show (RETURN_NODES n i nodes) = "RETURN_NODES "
-                                  ++ "(one of " ++ show n ++ " messages) "
-                                  ++ show i ++ " " ++ show nodes
+  show PING                   = "PING"
+  show PONG                   = "PONG"
+  show (STORE i _)            = "STORE " ++ show i ++ " <data>"
+                                -- FIXME: encode bytestring as hex here
+  show (FIND_VALUE i)         = "FIND_VALUE " ++ show i
+  show (RETURN_VALUE i _)     = "RETURN_VALUE " ++ show i ++ " <data>"
+                                -- FIXME: encode bytestring as hex here
+  show (FIND_NODE i)          = "FIND_NODE " ++ show i
+  show (RETURN_NODES i nodes) = "RETURN_NODES "
+                                ++ show i ++ " " ++ show nodes
 
 --------------------------------------------------------------------------------
 
