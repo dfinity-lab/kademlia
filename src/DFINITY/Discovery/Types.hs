@@ -153,10 +153,10 @@ instance Show Node where
 
 -- | Sort a bucket by the closeness of its nodes to a given ID.
 sortByDistanceTo
-  :: Vector Node
-  -> Ident
+  :: Ident
   -> Vector Node
-sortByDistanceTo bucket nid = do
+  -> Vector Node
+sortByDistanceTo nid bucket = do
   let f = distance nid . nodeId
   runST $ do
     mvec <- Vector.thaw (Vector.zip bucket (Vector.map f bucket))

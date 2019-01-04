@@ -82,7 +82,7 @@ lookup inst nid = runLookup go inst nid
       polled <- gets lookupStatePolled
       let rest = Vector.fromList (polled \\ known)
       unless (Vector.null rest) $ do
-        let cachePeer = nodePeer $ Vector.head $ sortByDistanceTo rest nid
+        let cachePeer = nodePeer $ Vector.head $ sortByDistanceTo nid rest
         liftIO (send (instanceHandle inst) cachePeer (STORE nid value))
 
       -- Return the value
@@ -129,8 +129,7 @@ store inst key val = runLookup go inst key
     -- Continuing always means waiting for the next signal
     continue = waitForReply end checkSignal
 
-    -- Send a FIND_NODE command, looking for the node corresponding to the
-    -- key
+    -- Send a FIND_NODE command, looking for the node corresponding to the key
     sendS = sendSignal (FIND_NODE key)
 
     -- Run the lookup as long as possible, to make sure the nodes closest
@@ -146,11 +145,11 @@ store inst key val = runLookup go inst key
                 -- Select the peers closest to the key
                 storePeers = Vector.map nodePeer
                              $ Vector.take peerNum
-                             $ sortByDistanceTo polled key
+                             $ sortByDistanceTo key polled
 
             -- Send them a STORE command
-            forM_ storePeers $
-                \storePeer -> liftIO . send h storePeer . STORE key $ val
+            forM_ storePeers $ \storePeer -> do
+              liftIO $ send h storePeer (STORE key val)
 
 --------------------------------------------------------------------------------
 
@@ -193,7 +192,7 @@ joinNetwork inst initPeer
         liftIO $ insertNode inst node
       continueLookup nodes sendS continue finish
 
-    checkSignal _ = error "Unknow signal for @joinNetwork@"
+    checkSignal _ = error "Unknown signal for @joinNetwork@"
 
     -- Continuing always means waiting for the next signal
     continue = waitForReply finish checkSignal
@@ -428,7 +427,7 @@ continueLookup nodes signalAction continue end = do
         -- Return the k closest nodes, the lookup had contact with
         pure (Vector.take
               (configK cfg)
-              (sortByDistanceTo (known <> polled) cid))
+              (sortByDistanceTo cid (known <> polled)))
 
   let allClosestPolled
         :: KademliaInstance
@@ -449,7 +448,7 @@ continueLookup nodes signalAction continue end = do
 
   -- Pick the k closest known nodes that haven't been polled yet
   let newKnown = Vector.take (configK cfg)
-                 $ (\xs -> sortByDistanceTo xs nid)
+                 $ sortByDistanceTo nid
                  $ Vector.filter (`notElem` polled) (nodes <> known)
 
   -- Check if k closest nodes have been polled already
@@ -457,7 +456,7 @@ continueLookup nodes signalAction continue end = do
 
   if | not (null newKnown) && not polledNeighbours -> do
          -- Send signal to the closest node that hasn't been polled yet
-         let next = Vector.head (sortByDistanceTo newKnown nid)
+         let next = Vector.head (sortByDistanceTo nid newKnown)
          signalAction next
 
          -- Update known

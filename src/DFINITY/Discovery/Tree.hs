@@ -355,7 +355,8 @@ findClosest (NodeTree idStruct treeElem _) nid n = do
   let chooseClosest :: [Node] -> [Node]
       chooseClosest nodes = Vector.toList
                             $ Vector.take n
-                            $ sortByDistanceTo (Vector.fromList nodes) nid
+                            $ sortByDistanceTo nid
+                            $ Vector.fromList nodes
 
   -- FIXME: combine left and right clauses in `go`
 

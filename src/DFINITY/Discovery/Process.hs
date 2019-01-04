@@ -125,11 +125,11 @@ receivingProcessDo inst reply rq = do
           let closestKnown = T.findClosest tree originId 1 `usingConfig` cfg
           let ownId        = T.extractId tree
           let self         = node { nodeId = ownId }
-          let bucket       = Vector.fromList (self : closestKnown)
           -- Find out closest known node
           let closestId    = nodeId
                              $ Vector.head
-                             $ sortByDistanceTo bucket originId
+                             $ sortByDistanceTo originId
+                             $ Vector.fromList (self : closestKnown)
 
 
           -- This node can be assumed to be closest to the new node
@@ -291,7 +291,7 @@ sendPing
   -> Chan Reply
   -> IO ()
 sendPing h node chan = do
-  expect h (ReplyRegistration [R_PONG] (nodePeer node)) $ chan
+  expect h (ReplyRegistration [R_PONG] (nodePeer node)) chan
   send h (nodePeer node) PING
 
 -- | Signal a node timeout and return whether it should be repinged.
