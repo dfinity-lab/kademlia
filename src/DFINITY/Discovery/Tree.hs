@@ -351,7 +351,7 @@ findClosest
   -> WithConfig [Node]
 findClosest (NodeTree idStruct treeElem _) nid n = do
   let chooseClosest :: [Node] -> [Node]
-      chooseClosest nodes = take n (sortByDistanceTo nodes nid)
+      chooseClosest nodes = take n (sortByDistanceTo nid nodes)
 
   -- FIXME: combine left and right clauses in `go`
 

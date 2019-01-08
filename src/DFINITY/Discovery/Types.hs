@@ -148,10 +148,10 @@ instance Show Node where
 
 -- | Sort a bucket by the closeness of its nodes to a given ID.
 sortByDistanceTo
-  :: [Node]
-  -> Ident
+  :: Ident
   -> [Node]
-sortByDistanceTo bucket nid = do
+  -> [Node]
+sortByDistanceTo nid bucket = do
   let f = distance nid . nodeId
   let pack bk = zip bk (map f bk)
   let sort = sortBy (compare `on` snd)

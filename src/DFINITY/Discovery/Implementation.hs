@@ -80,7 +80,7 @@ lookup inst nid = runLookup go inst nid
       polled <- gets lookupStatePolled
       let rest = polled \\ known
       unless (null rest) $ do
-        let cachePeer = nodePeer $ head $ sortByDistanceTo rest nid
+        let cachePeer = nodePeer $ head $ sortByDistanceTo nid rest
         liftIO (send (instanceHandle inst) cachePeer (STORE nid value))
 
       -- Return the value
@@ -143,7 +143,7 @@ store inst key val = runLookup go inst key
         -- Select the peers closest to the key
         let storePeers = map nodePeer
                          $ take peerNum
-                         $ sortByDistanceTo polled key
+                         $ sortByDistanceTo key polled
 
         -- Send them a STORE command
         forM_ storePeers $ \storePeer -> do
@@ -423,7 +423,7 @@ continueLookup nodes signalAction continue end = do
         -- Return the k closest nodes, the lookup had contact with
         pure (take
               (configK cfg)
-              (sortByDistanceTo (known ++ polled) cid))
+              (sortByDistanceTo cid (known ++ polled)))
 
   let allClosestPolled
         :: KademliaInstance
@@ -444,7 +444,7 @@ continueLookup nodes signalAction continue end = do
 
   -- Pick the k closest known nodes that haven't been polled yet
   let newKnown = take (configK cfg)
-                 $ (\xs -> sortByDistanceTo xs nid)
+                 $ sortByDistanceTo nid
                  $ filter (`notElem` polled) (nodes ++ known)
 
   -- Check if k closest nodes have been polled already
@@ -452,7 +452,7 @@ continueLookup nodes signalAction continue end = do
 
   if | not (null newKnown) && not polledNeighbours -> do
          -- Send signal to the closest node that hasn't been polled yet
-         let next = head (sortByDistanceTo newKnown nid)
+         let next = head (sortByDistanceTo nid newKnown)
          signalAction next
 
          -- Update known

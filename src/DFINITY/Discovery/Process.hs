@@ -126,7 +126,7 @@ receivingProcessDo inst reply rq = do
           let self         = node { nodeId = ownId }
           let bucket       = self:closestKnown
           -- Find out closest known node
-          let closestId    = nodeId (head (sortByDistanceTo bucket originId))
+          let closestId    = nodeId (head (sortByDistanceTo originId bucket))
 
 
           -- This node can be assumed to be closest to the new node
