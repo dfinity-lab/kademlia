@@ -127,28 +127,27 @@ store inst key val = runLookup go inst key
     -- Continuing always means waiting for the next signal
     continue = waitForReply end checkSignal
 
-    -- Send a FIND_NODE command, looking for the node corresponding to the
-    -- key
+    -- Send a FIND_NODE command, looking for the node corresponding to the key
     sendS = sendSignal (FIND_NODE key)
 
     -- Run the lookup as long as possible, to make sure the nodes closest
     -- to the key were polled.
     end = do
-        polled <- gets lookupStatePolled
+      polled <- gets lookupStatePolled
 
-        unless (null polled) $ do
-            let h = instanceHandle inst
-                k' = configK $ instanceConfig inst
-                -- Don't select more than k peers
-                peerNum = if length polled > k' then k' else length polled
-                -- Select the peers closest to the key
-                storePeers = map nodePeer
-                             $ take peerNum
-                             $ sortByDistanceTo polled key
+      unless (null polled) $ do
+        let h = instanceHandle inst
+        let k' = configK $ instanceConfig inst
+        -- Don't select more than k peers
+        let peerNum = if length polled > k' then k' else length polled
+        -- Select the peers closest to the key
+        let storePeers = map nodePeer
+                         $ take peerNum
+                         $ sortByDistanceTo polled key
 
-            -- Send them a STORE command
-            forM_ storePeers $
-                \storePeer -> liftIO . send h storePeer . STORE key $ val
+        -- Send them a STORE command
+        forM_ storePeers $ \storePeer -> do
+          liftIO $ send h storePeer (STORE key val)
 
 --------------------------------------------------------------------------------
 
