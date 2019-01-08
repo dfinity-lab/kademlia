@@ -8,11 +8,8 @@
 -- Module:      DFINITY.Discovery.Protocol.Parse
 -- Description: Implementation of the protocol parsing
 --
--- "DFINITY.Discovery.Protocol.Parsing" implements the actual parsing
+-- "DFINITY.Discovery.Protocol.Parse" implements the actual parsing
 -- of 'Command's.
---
--- It made sense to split it off of "DFINITY.Discovery.Protocol" as it made both
--- cleaner and more readable.
 
 --------------------------------------------------------------------------------
 
