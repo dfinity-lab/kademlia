@@ -158,7 +158,7 @@ sendProcessL sock lim nid chan logInfo logError = do
                           (Just (show port))
 
         -- Send the signal
-        let signals = [serialize lim nid cmd]
+        let signals = serialize lim nid cmd
         let addr = addrAddress peeraddr
         forM_ signals $ \signal -> do
           S.sendTo sock signal addr
