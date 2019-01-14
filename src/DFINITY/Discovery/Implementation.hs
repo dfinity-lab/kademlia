@@ -89,7 +89,8 @@ lookup inst nid = runLookup go inst nid
     -- When receiving a RETURN_NODES command, throw the nodes into the
     -- lookup loop and continue the lookup
     checkSignal (Signal _ (RETURN_NODES _ _ nodes)) =
-        continueLookup nodes sendS continue cancel
+      continueLookup nodes sendS continue cancel
+
     checkSignal _ = error "Fundamental error in unhandled query @lookup@"
 
     -- Continuing always means waiting for the next signal
@@ -121,7 +122,8 @@ store inst key val = runLookup go inst key
 
     -- Always add the nodes into the loop and continue the lookup
     checkSignal (Signal _ (RETURN_NODES _ _ nodes)) =
-        continueLookup nodes sendS continue end
+      continueLookup nodes sendS continue end
+
     checkSignal _ = error "Meet unknown signal in store"
 
     -- Continuing always means waiting for the next signal
@@ -376,6 +378,18 @@ waitForReplyDo withinJoin cancel onSignal = do
 
                  case cmd of
                    RETURN_NODES n nid _ -> do
+                     -- When a RETURN_NODES message with count @n@ is received,
+                     -- this logic will increment a counter (in the @pending@
+                     -- map) by 1 until that counter is equal to @n@, at which
+                     -- point the counter will be removed from the @pending@
+                     -- map. This is pretty naive and should be overhauled.
+                     --
+                     -- TODO: this logic should account for UDP packet loss
+                     --
+                     -- Almost everything in this codebase is trivially DoSable;
+                     -- we should mitigate this using the cryptopuzzles defined
+                     -- in the S-Kademlia paper, which add a proof of work for
+                     -- each message received.
                      toRemove <- maybe True (\s -> s + 1 >= n)
                                  <$> gets (Map.lookup node . lookupStatePending)
                      if toRemove
