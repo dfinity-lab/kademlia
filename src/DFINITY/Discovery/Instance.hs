@@ -65,17 +65,17 @@ import           DFINITY.Discovery.Types
 data KademliaInstance
   = KademliaInstance
     { instanceNode              :: !Node
-      -- ^ FIXME: doc
+      -- ^ The 'Node' identifying this Kademlia instance.
     , instanceHandle            :: !KademliaHandle
-      -- ^ FIXME: doc
+      -- ^ The network sockets and threads of the Kademlia instance.
     , instanceState             :: !KademliaState
-      -- ^ FIXME: doc
+      -- ^ The current state of the Kademlia node.
     , instanceExpirationThreads :: !(STM.TVar (Map Ident ThreadId))
-      -- ^ FIXME: doc
+      -- ^ A set of timer threads that are responsible for expiry.
     , instanceConfig            :: !KademliaConfig
-      -- ^ FIXME: doc
+      -- ^ The 'KademliaConfig' that was passed when this instance was started.
     }
-  deriving ()
+  deriving (Generic)
 
 --------------------------------------------------------------------------------
 
@@ -99,26 +99,27 @@ data BanState
 data KademliaState
   = KademliaState
     { stateTree   :: !(STM.TVar T.NodeTree)
-      -- ^ FIXME: doc
+      -- ^ The current 'T.NodeTree' state.
     , stateBanned :: !(STM.TVar (Map Peer BanState))
-      -- ^ FIXME: doc
+      -- ^ The current set of banned 'Peer's (and their 'BanState's).
     , stateValues :: !(STM.TVar (Map Ident Value))
-      -- ^ FIXME: doc
+      -- ^ The current local replica of the DHT's key-value mapping.
     }
-  deriving ()
+  deriving (Generic)
 
 --------------------------------------------------------------------------------
 
 -- |
--- FIXME: doc
+-- A frozen version of 'KademliaState' that allows a running 'KademliaInstance'
+-- to be warm-started.
 data KademliaSnapshot
   = KademliaSnapshot
     { snapshotTree   :: !T.NodeTree
-      -- ^ FIXME: doc
+      -- ^ The frozen 'T.NodeTree' at the time of the snapshot.
     , snapshotBanned :: !(Map Peer BanState)
-      -- ^ FIXME: doc
+      -- ^ The frozen set of banned 'Peer's at the time of the snapshot.
     , snapshotValues :: !(Map Ident Value)
-      -- ^ FIXME: doc
+      -- ^ The frozen key-value mapping at the time of the snapshot.
     }
   deriving (Generic)
 

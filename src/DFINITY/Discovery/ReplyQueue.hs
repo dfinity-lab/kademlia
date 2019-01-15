@@ -64,9 +64,9 @@ data ReplyType
 data ReplyRegistration
   = ReplyRegistration
     { replyTypes  :: ![ReplyType]
-      -- ^ FIXME: doc
+      -- ^ The types corresponding to each registered reply.
     , replyOrigin :: !Peer
-      -- ^ FIXME: doc
+      -- ^ The origin of the registered replies.
     }
   deriving (Eq, Show)
 
@@ -119,11 +119,11 @@ data ReplyQueue
       -- ^ This channel is needed for accepting requests from nodes.
       --   Only request will be processed, reply will be ignored.
     , replyQueueLogInfo      :: !(String -> IO ())
-      -- ^ FIXME: doc
+      -- ^ A logging function at the @INFO@ level.
       --
       --   FIXME: switch to Text
     , replyQueueLogError     :: !(String -> IO ())
-      -- ^ FIXME: doc
+      -- ^ A logging function at the @ERROR@ level.
       --
       --   FIXME: switch to Text
     }
@@ -132,15 +132,15 @@ data ReplyQueue
 --------------------------------------------------------------------------------
 
 -- |
--- FIXME: doc
+-- A data structure representing a pending response.
 data ExpectedResponse
   = ExpectedResponse
     { expectedResponseRegistration :: !ReplyRegistration
-      -- ^ FIXME: doc
+      -- ^ The underlying 'ReplyRegistration'.
     , expectedResponseReplyChan    :: !(Chan Reply)
-      -- ^ FIXME: doc
+      -- ^ The channel on which the 'Reply' will arrive.
     , expectedResponseThreadID     :: !Conc.ThreadId
-      -- ^ FIXME: doc
+      -- ^ The thread that waits for the 'Reply'.
     }
   deriving (Eq)
 
@@ -182,7 +182,7 @@ register reg rq chan = do
     rQueue <- STM.readTVar $ replyQueueQueue rq
     let er = ExpectedResponse reg chan tid
     STM.writeTVar (replyQueueQueue rq) (rQueue ++ [er])
-    -- FIXME: this is slow, use a vector
+    -- FIXME: this is slow, use a growable vector
 
 --------------------------------------------------------------------------------
 

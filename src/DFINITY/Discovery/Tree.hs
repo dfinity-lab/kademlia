@@ -78,7 +78,6 @@ data NodeTree
 newtype PingInfo
   = PingInfo
     { pingInfoLastSeen :: Timestamp
-      -- ^ FIXME: doc
     }
   deriving (Eq, Generic)
 
@@ -86,18 +85,12 @@ newtype PingInfo
 
 -- | FIXME: doc
 data NodeTreeElem
-  = -- | FIXME: doc
-    Split
+  = Split
     !NodeTreeElem
-    -- ^ FIXME: doc
     !NodeTreeElem
-    -- ^ FIXME: doc
-  | -- | FIXME: doc
-    Bucket
+  | Bucket
     !NodesWithPing
-    -- ^ FIXME: doc
     !NodeCache
-    -- ^ FIXME: doc
   deriving (Generic)
 
 --------------------------------------------------------------------------------

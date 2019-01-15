@@ -100,15 +100,19 @@ data KademliaConfig
 
 --------------------------------------------------------------------------------
 
--- | FIXME: doc
+-- |
+-- The default value of the @k@ parameter.
 defaultK :: Int
 defaultK = 7
 
--- | FIXME: doc
+-- |
+-- The default value of the routing-sharing parameter, which mixes in random
+-- nodes in addition to the @k@-closest nodes.
 defaultRoutingSharingN :: Int
 defaultRoutingSharingN = uncurry (+) $ defaultK `divMod` 2
 
--- | FIXME: doc
+-- |
+-- The default 'KademliaConfig' to use.
 defaultConfig :: KademliaConfig
 defaultConfig
   = KademliaConfig
@@ -136,20 +140,25 @@ newtype WithConfigT m a
 
 --------------------------------------------------------------------------------
 
--- | FIXME: doc
+-- |
+-- A useful type alias for 'WithConfigT' when the base monad is 'Identity'.
 type WithConfig a = WithConfigT Identity a
 
 --------------------------------------------------------------------------------
 
--- | FIXME: doc
+-- |
+-- Use the monadic context given by the 'WithConfigT' monad transformer to
+-- retrieve the configuration ('KademliaConfig').
 getConfig :: Monad m => WithConfigT m KademliaConfig
 getConfig = WithConfigT ask
 
--- | FIXME: doc
+-- |
+-- Run a 'WithConfigT' computation using the given 'KademliaConfig'.
 usingConfigT :: WithConfigT m a -> KademliaConfig -> m a
 usingConfigT f cfg = flip runReaderT cfg $ getWithConfigT f
 
--- | FIXME: doc
+-- |
+-- A specialization of 'usingConfigT' where the underlying monad is 'Identity'.
 usingConfig :: WithConfig a -> KademliaConfig -> a
 usingConfig f cfg = runIdentity $ usingConfigT f cfg
 

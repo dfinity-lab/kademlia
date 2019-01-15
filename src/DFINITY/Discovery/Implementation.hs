@@ -52,8 +52,9 @@ import           DFINITY.Discovery.Types
 
 --------------------------------------------------------------------------------
 
--- | Lookup the value corresponding to a key in the DHT and return it, together
---   with the Node that was the first to answer the lookup
+-- |
+-- Lookup the value corresponding to a key in the distributed hash table and
+-- return it, together with the Node that was the first to answer the lookup.
 lookup
   :: KademliaInstance -> Ident -> IO (Maybe (Value, Node))
 lookup inst nid = runLookup go inst nid
@@ -74,8 +75,7 @@ lookup inst nid = runLookup go inst nid
       -- Finish the lookup, recording which nodes returned the value
       finish
 
-      -- Store the value in the closest peer that didn't return the
-      -- value
+      -- Store the value in the closest peer that didn't return the value
       known  <- gets lookupStateKnown
       polled <- gets lookupStatePolled
       let rest = polled \\ known
@@ -86,10 +86,10 @@ lookup inst nid = runLookup go inst nid
       -- Return the value
       pure (Just (value, origin))
 
-    -- When receiving a RETURN_NODES command, throw the nodes into the
+    -- When receiving a 'RETURN_NODES' command, throw the nodes into the
     -- lookup loop and continue the lookup
-    checkSignal (Signal _ (RETURN_NODES _ _ nodes)) =
-      continueLookup nodes sendS continue cancel
+    checkSignal (Signal _ (RETURN_NODES _ _ nodes))
+      = continueLookup nodes sendS continue cancel
 
     checkSignal _ = error "Fundamental error in unhandled query @lookup@"
 
@@ -101,19 +101,20 @@ lookup inst nid = runLookup go inst nid
 
     -- As long as there still are pending requests, wait for the next one
     finish = do
-        pending <- gets lookupStatePending
-        unless (null pending) $ waitForReply (return ()) finishCheck
+      pending <- gets lookupStatePending
+      unless (null pending) $ waitForReply (return ()) finishCheck
 
     -- Record the nodes which return the value
     finishCheck (Signal origin (RETURN_VALUE _ _)) = do
-        known <- gets lookupStateKnown
-        modify $ \s -> s { lookupStateKnown = origin:known }
-        finish
+      known <- gets lookupStateKnown
+      modify $ \s -> s { lookupStateKnown = origin:known }
+      finish
     finishCheck _ = finish
 
 --------------------------------------------------------------------------------
 
--- | Store assign a value to a key and store it in the DHT
+-- |
+-- Store a key-value pair in the distributed hash table.
 store
   :: KademliaInstance -> Ident -> Value -> IO ()
 store inst key val = runLookup go inst key
@@ -153,7 +154,8 @@ store inst key val = runLookup go inst key
 
 --------------------------------------------------------------------------------
 
--- | The different possible results of joinNetwork
+-- |
+-- The different possible results of 'joinNetwork'.
 data JoinResult
   = JoinSuccess
   | NodeDown
@@ -162,7 +164,8 @@ data JoinResult
 
 --------------------------------------------------------------------------------
 
--- | Make a KademliaInstance join the network a supplied Node is in
+-- |
+-- Make a 'KademliaInstance' join the network a supplied Node is in.
 joinNetwork
   :: KademliaInstance
   -> Peer
@@ -353,9 +356,9 @@ waitForReplyDo withinJoin cancel onSignal = do
   -- Continue, if there still are pending responses
   let continueIfMorePending = do
         updatedPending <- gets lookupStatePending
-        if not (null updatedPending)
-          then waitForReply cancel onSignal
-          else cancel
+        if null updatedPending
+          then cancel
+          else waitForReply cancel onSignal
 
   result <- liftIO $ readChan chan
   case result of
