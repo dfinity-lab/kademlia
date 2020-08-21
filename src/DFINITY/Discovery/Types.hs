@@ -33,7 +33,7 @@ module DFINITY.Discovery.Types
   ) where
 
 --------------------------------------------------------------------------------
-
+import           Data.Bit.ThreadSafe
 import           Data.Bits                (setBit, testBit, zeroBits)
 import           Data.Function            (on)
 import           Data.Int                 (Int64)
