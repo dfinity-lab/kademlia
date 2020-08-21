@@ -40,7 +40,7 @@ module DFINITY.Discovery.Tree
   ) where
 
 --------------------------------------------------------------------------------
-
+import           Data.Vector.Unboxed      (!)
 import           Prelude                  hiding (lookup)
 
 import           Control.Arrow            (second)
@@ -308,7 +308,7 @@ split tree splitId = modifyAt tree splitId g
     splitBucket i f
       = \case []     -> pure ([], [])
               (n:ns) -> do let bs = toByteStruct (nodeId (f n))
-                           let bit = bs !! i
+                           let bit = bs ! i
                            (left, right) <- splitBucket i f ns
                            pure $ if bit
                                   then (left, n : right)
