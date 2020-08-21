@@ -182,8 +182,7 @@ toByteStruct
 fromByteStruct
   :: ByteStruct
   -> Ident
-fromByteStruct bs
-  = Ident $ vectorToByteString . convert . cloneToWords8
+fromByteStruct = Ident $ vectorToByteString . convert . cloneToWords8
 
 --------------------------------------------------------------------------------
 
