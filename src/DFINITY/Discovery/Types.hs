@@ -35,7 +35,7 @@ module DFINITY.Discovery.Types
 --------------------------------------------------------------------------------
 import           Data.Vector.Storable.ByteString
 import           Data.Bit.ThreadSafe
-import           Data.Bits                (setBit, testBit, zeroBits)
+import           Data.Bits                (setBit, testBit, zeroBits, xor)
 import           Data.Function            (on)
 import           Data.Int                 (Int64)
 import           Data.List                (sortBy)
@@ -164,7 +164,7 @@ sortByDistanceTo nid bucket = do
 -- | A Structure made up of bits, represented as a list of Bools
 --
 --   FIXME: this is really bad
-type ByteStruct = [Bool]
+type ByteStruct = Vector Bit
 
 --------------------------------------------------------------------------------
 
@@ -173,9 +173,7 @@ toByteStruct
   :: Ident
   -> ByteStruct
 toByteStruct
-  = BS.foldr (\w bits -> convert w ++ bits) [] . fromIdent
-  where
-    convert w = foldr (\i bits -> testBit w i : bits) [] [0 .. 7]
+  = castFromWords8 . convert . byteStringToVector . fromIdent
 
 --------------------------------------------------------------------------------
 
@@ -184,14 +182,7 @@ fromByteStruct
   :: ByteStruct
   -> Ident
 fromByteStruct bs
-  = Ident $ BS.pack $ foldr (\i ws -> createWord i : ws) [] indexes
-  where
-    indexes = [0 .. (length bs `div` 8) - 1]
-    createWord i = let pos = i * 8
-                   in foldr changeBit zeroBits [pos .. pos + 7]
-    changeBit i w = if bs !! i
-                    then setBit w (i `mod` 8)
-                    else w
+  = Ident $ vectorToByteString . convert . cloneToWords8
 
 --------------------------------------------------------------------------------
 
@@ -203,10 +194,9 @@ distance
   -> Ident
   -> ByteStruct
 distance idA idB
-  = let xor a b = not (a && b) && (a || b)
-        bsA = toByteStruct idA
+  = let bsA = toByteStruct idA
         bsB = toByteStruct idB
-    in zipWith xor bsA bsB
+    in zipBits xor bsA bsB
 
 --------------------------------------------------------------------------------
 
