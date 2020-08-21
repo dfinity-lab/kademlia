@@ -36,7 +36,7 @@ module DFINITY.Discovery.Types
 import           Data.Vector.Unboxed      (Vector, convert)
 import           Data.Vector.Storable.ByteString
 import           Data.Bit.ThreadSafe
-import           Data.Bits                (setBit, testBit, zeroBits, xor)
+import           Data.Bits                (xor)
 import           Data.Function            (on)
 import           Data.Int                 (Int64)
 import           Data.List                (sortBy)
@@ -45,7 +45,6 @@ import           GHC.Generics             (Generic)
 import           Network.Socket           (PortNumber, SockAddr (..))
 
 import           Data.ByteString          (ByteString)
-import qualified Data.ByteString          as BS
 
 import           Data.IP                  (IP)
 import qualified Data.IP                  as IP
