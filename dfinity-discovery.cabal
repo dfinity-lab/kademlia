@@ -67,7 +67,7 @@ library
                      , transformers         >= 0.3
                      , cryptonite
                      , contravariant
-
+                     , bitvec
   hs-source-dirs:      src
   default-language:    Haskell2010
   ghc-options:         -Werror -Wall -fno-warn-orphans -O2
