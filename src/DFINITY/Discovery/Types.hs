@@ -33,7 +33,7 @@ module DFINITY.Discovery.Types
   ) where
 
 --------------------------------------------------------------------------------
-import           Data.Vector              (Vector, convert)
+import           Data.Vector.Unboxed      (Vector, convert)
 import           Data.Vector.Storable.ByteString
 import           Data.Bit.ThreadSafe
 import           Data.Bits                (setBit, testBit, zeroBits, xor)
