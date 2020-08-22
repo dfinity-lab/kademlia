@@ -24,7 +24,7 @@ import           DFINITY.Discovery.Types
 
 -- | Checks whether toByteStruct converts correctly
 toByteStructCheck :: Ident -> Bool
--- | Fix Me
+-- | FIXME
 toByteStructCheck _ = True 
 
 -- | Checks whether fromByteStruct converts correctly
