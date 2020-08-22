@@ -310,9 +310,9 @@ split tree splitId = modifyAt tree splitId g
               (n:ns) -> do let bs = toByteStruct (nodeId (f n))
                            let bit = bs ! i
                            (left, right) <- splitBucket i f ns
-                           pure $ if bit
-                                  then (left, n : right)
-                                  else (n : left, right)
+                           pure $ case bit of
+                                    1 -> (left, n : right)
+                                    0 -> (n : left, right)
 
 --------------------------------------------------------------------------------
 
@@ -365,34 +365,22 @@ findClosest (NodeTree idStruct treeElem _) nid n = do
           -- aren't enough, take the rest from the right.
           Split left right -> do
             case (not (null is) && not (null ts)) of 
-              True -> case (head ts) of
-                        
-              
-              
-              
-              
-              
+              True -> do
+                    let irest = tail is
+                        trest = tail ts
+                    case (head ts) of
+                        0 -> do
+                            result <- go irest trest left
+                            if length result == n
+                               then pure result
+                               else (result ++) <$> go irest trest right
+                        1 -> do
+                            result <- go irest trest right
+                            if length result == n
+                               then pure result
+                               else (result ++) <$> go irest trest left
               False -> do
                     error "Fundamental error in @go@ function in 'findClosest'"
-          
-          
-          
-          
-          (_ : irest, False : trest, Split left right) -> do
-            result <- go irest trest left
-            if length result == n
-              then pure result
-              else (result ++) <$> go irest trest right
-          -- Take the closest nodes from the right child first and if those
-          -- aren't enough, take the rest from the left.
-          (_ : irest, True  : trest, Split left right) -> do
-            result <- go irest trest right
-            if length result == n
-              then pure result
-              else (result ++) <$> go irest trest left
-          -- Something has gone terribly wrong.
-          _ -> do
-            error "Fundamental error in @go@ function in 'findClosest'"
 
   let targetStruct = toByteStruct nid
   chooseClosest <$> go idStruct targetStruct treeElem
