@@ -40,7 +40,7 @@ module DFINITY.Discovery.Tree
   ) where
 
 --------------------------------------------------------------------------------
-import           Data.Vector.Unboxed      (!)
+import           Data.Vector.Unboxed      (!, null, head, tail)
 import           Prelude                  hiding (lookup)
 
 import           Control.Arrow            (second)
@@ -354,18 +354,26 @@ findClosest (NodeTree idStruct treeElem _) nid n = do
          -> NodeTreeElem
          -> WithConfig [Node]
       go is ts el = do
-        case (is, ts, el) of
+        case el of
           -- Take the @n@ closest nodes.
-          (_, _, Bucket nodePairs _) -> do
+          Bucket nodePairs _ -> do
             let nodes = map fst nodePairs
             pure $ if length nodes <= n
                    then nodes
                    else chooseClosest nodes
           -- Take the closest nodes from the left child first and if those
           -- aren't enough, take the rest from the right.
-          (_, _, Split left right) -> do
-                   
-          
+          Split left right -> do
+            case (not (null is) && not (null ts)) of 
+              True -> case (head ts) of
+                        
+              
+              
+              
+              
+              
+              False -> do
+                    error "Fundamental error in @go@ function in 'findClosest'"
           
           
           
