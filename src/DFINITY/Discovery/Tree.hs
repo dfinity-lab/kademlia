@@ -363,6 +363,13 @@ findClosest (NodeTree idStruct treeElem _) nid n = do
                    else chooseClosest nodes
           -- Take the closest nodes from the left child first and if those
           -- aren't enough, take the rest from the right.
+          (_, _, Split left right) -> do
+                   
+          
+          
+          
+          
+          
           (_ : irest, False : trest, Split left right) -> do
             result <- go irest trest left
             if length result == n
