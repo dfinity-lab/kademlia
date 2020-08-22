@@ -34,8 +34,8 @@ module DFINITY.Discovery.Types
 
 --------------------------------------------------------------------------------
 import           Data.Vector.Unboxed      (Vector, convert)
-import           Data.Vector.Storable.ByteString
-import           Data.Bit.ThreadSafe
+import           Data.Vector.Storable.ByteString (byteStringToVector, vectorToByteString)
+import           Data.Bit.ThreadSafe      (cloneToWords8, castFromWords8, Bit)
 import           Data.Bits                (xor)
 import           Data.Function            (on)
 import           Data.Int                 (Int64)
