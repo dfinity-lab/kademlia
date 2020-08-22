@@ -40,8 +40,10 @@ module DFINITY.Discovery.Tree
   ) where
 
 --------------------------------------------------------------------------------
-import           Data.Vector.Unboxed      (!, null, head, tail)
-import           Prelude                  hiding (lookup)
+import           Data.Bit.ThreadSafe      (unBit)
+import           Data.Vector.Unboxed      ((!), null, head, tail)
+import qualified Data.Vector.Unboxed      as V (length)
+import           Prelude                  hiding (lookup, null, head, tail)
 
 import           Control.Arrow            (second)
 import           Control.Monad.Random     (evalRand)
@@ -226,7 +228,7 @@ insert tree node currentTime = do
   -- Check whether a bucket needs splitting FIXME
   let needsSplit :: NodeTreeFunction Bool
       needsSplit depth valid _ nodes _ = do
-        let maxDepth = length (toByteStruct nid) - 1
+        let maxDepth = V.length (toByteStruct nid) - 1
 
         -- True iff a new node will be inserted.
         let newNodeWillBeInserted
@@ -310,9 +312,9 @@ split tree splitId = modifyAt tree splitId g
               (n:ns) -> do let bs = toByteStruct (nodeId (f n))
                            let bit = bs ! i
                            (left, right) <- splitBucket i f ns
-                           pure $ case bit of
-                                    1 -> (left, n : right)
-                                    0 -> (n : left, right)
+                           pure $ case (unBit bit) of
+                                    True -> (left, n : right)
+                                    False -> (n : left, right)
 
 --------------------------------------------------------------------------------
 
@@ -368,13 +370,13 @@ findClosest (NodeTree idStruct treeElem _) nid n = do
               True -> do
                     let irest = tail is
                         trest = tail ts
-                    case (head ts) of
-                        0 -> do
+                    case (unBit . head $ ts) of
+                        False -> do
                             result <- go irest trest left
                             if length result == n
                                then pure result
                                else (result ++) <$> go irest trest right
-                        1 -> do
+                        True -> do
                             result <- go irest trest right
                             if length result == n
                                then pure result
@@ -404,12 +406,19 @@ toView :: NodeTree -> [[(Node, Timestamp)]]
 toView (NodeTree bs treeElems _) = go bs treeElems []
   where
     -- If the bit is 0, go left, then right
-    go (False : is) (Split left right) = go is left . go is right
-    -- Otherwise go right first
-    go (True  : is) (Split left right) = go is right . go is left
-    go _            (Split _    _    ) = error "toView: unexpected Split"
-    go _            (Bucket b _)       = (map (second pingInfoLastSeen) b :)
-
+    go is sp = do
+       case sp of
+          (Split left right) -> do 
+                case (null is) of
+                         False -> do
+                            let ris = tail is
+                            case (unBit . head $ is) of
+                                False -> go ris left . go ris right
+                                True -> go ris right . go ris left
+                         True -> do
+                            error "toView: unexpected Split"              
+          (Bucket b _) -> do
+                (map (second pingInfoLastSeen) b :)
 --------------------------------------------------------------------------------
 
 -- | Turn the NodeTree into a list of nodes
@@ -459,19 +468,23 @@ applyAt (NodeTree idStruct treeElem peers) nid f = do
   let go :: ByteStruct -> ByteStruct -> Depth -> Validity -> NodeTreeElem
          -> WithConfig a
       go is ts depth valid el = do
-        case (is, ts, el) of
-          -- Apply the function
-          (_, _, Bucket nodes cache) -> do
-            f depth valid peers nodes cache
-          -- If the bit is a 0, go left
-          (i : irest, False : trest, Split left _) -> do
-            go irest trest (depth + 1) (valid && not i) left
-          -- Otherwise, continue to the right
-          (i : irest, True  : trest, Split _ right) -> do
-            go irest trest (depth + 1) (valid &&     i) right
-          -- Something has gone terribly wrong.
-          _ -> do
-            error "Fundamental error in @go@ function in 'applyAt'"
+            case el of
+               -- Apply the function
+               Bucket nodes cache -> do
+                 f depth valid peers nodes cache
+               Split left right -> do
+                 case (not (null is) && not (null ts)) of
+                   True -> do
+                         let irest = tail is
+                             trest = tail ts
+                             i = head is
+                         case (unBit . head $ ts) of
+                             False -> do
+                                go irest trest (depth + 1) (valid && not (unBit i)) left
+                             True -> do
+                                go irest trest (depth + 1) (valid &&     (unBit i)) right
+                   False -> do
+                         error "Fundamental error in @go@ function in 'applyAt'"
 
   let targetStruct = toByteStruct nid
   go idStruct targetStruct 0 True treeElem
@@ -495,21 +508,25 @@ modifyApplyAt (NodeTree idStruct treeElem peers) nid f = do
   let go :: ByteStruct -> ByteStruct -> Depth -> Validity -> NodeTreeElem
          -> WithConfig (NodeTreeElem, Map Peer Ident, a)
       go is ts depth valid el = do
-        case (is, ts, el) of
-          -- Apply the function to the position of the bucket
-          (_, _, Bucket nodes cache) -> do
-            f depth valid peers nodes cache
-          -- If the bit is a 0, go left
-          (i : irest, False : trest, Split left right) -> do
-            (new, ms, val) <- go irest trest (depth + 1) (valid && not i) left
-            pure (Split new right, ms, val)
-          -- Otherwise, continue to the right
-          (i : irest, True : trest, Split left right) -> do
-            (new, ms, val) <- go irest trest (depth + 1) (valid &&     i) right
-            pure (Split left new, ms, val)
-          -- Something has gone terribly wrong.
-          _ -> do
-            error "Fundamental error in @go@ function in 'modifyApplyAt'"
+             case el of
+                    -- Apply the function
+                    Bucket nodes cache -> do
+                      f depth valid peers nodes cache
+                    Split left right -> do
+                      case (not (null is) && not (null ts)) of
+                        True -> do
+                              let irest = tail is
+                                  trest = tail ts
+                                  i = head is
+                              case (unBit . head $ ts) of
+                                  False -> do
+                                     (new, ms, val) <- go irest trest (depth + 1) (valid && not (unBit i)) left
+                                     pure (Split new right, ms, val)
+                                  True -> do
+                                     (new, ms, val) <- go irest trest (depth + 1) (valid &&     (unBit i)) right
+                                     pure (Split left new, ms, val)
+                        False -> do                  
+                              error "Fundamental error in @go@ function in 'modifyApplyAt'"
 
   let targetStruct = toByteStruct nid
   (newElems, mpeers, val) <- go idStruct targetStruct 0 True treeElem
