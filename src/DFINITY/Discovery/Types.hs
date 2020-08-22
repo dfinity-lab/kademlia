@@ -161,9 +161,8 @@ sortByDistanceTo nid bucket = do
 
 --------------------------------------------------------------------------------
 
--- | A Structure made up of bits, represented as a list of Bools
+-- | A Structure made up of bits, represented as a vector of Bit
 --
---   FIXME: this is really bad
 type ByteStruct = Vector Bit
 
 --------------------------------------------------------------------------------
