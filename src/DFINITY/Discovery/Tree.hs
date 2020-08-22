@@ -408,7 +408,7 @@ toView (NodeTree bs treeElems _) = go bs treeElems []
     -- If the bit is 0, go left, then right
     go is sp = do
        case sp of
-          (Split left right) -> do 
+          Split left right -> do 
                 case (null is) of
                          False -> do
                             let ris = tail is
@@ -417,7 +417,7 @@ toView (NodeTree bs treeElems _) = go bs treeElems []
                                 True -> go ris right . go ris left
                          True -> do
                             error "toView: unexpected Split"              
-          (Bucket b _) -> do
+          Bucket b _ -> do
                 (map (second pingInfoLastSeen) b :)
 --------------------------------------------------------------------------------
 
