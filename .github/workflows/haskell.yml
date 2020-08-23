@@ -36,10 +36,10 @@ jobs:
     - name: test
       run: |
         stack test
-    #- name: commit
-    #  run: |
-    #    git config --global user.email idcm@live.cn
-    #    git config --global user.name idcm
-    #    git add .
-    #    git commit -m 'run stylish-haskell'
-    #    git push
+    - name: commit
+      run: |
+        git config --global user.email idcm@live.cn
+        git config --global user.name idcm
+        git add .
+        git commit -m 'run stylish-haskell'
+        git push
