@@ -14,7 +14,7 @@ module Tests.Types
        ) where
 
 --------------------------------------------------------------------------------
-
+import qualified Data.ByteString         as B
 import           Test.QuickCheck         ()
 import           Data.Bits               (testBit)
 import           DFINITY.Discovery.Types
