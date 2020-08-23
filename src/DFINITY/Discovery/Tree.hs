@@ -197,7 +197,7 @@ handleTimeout currentTime tree peer = do
 -- |
 -- Refresh the node corresponding to a supplied ID by placing it at the first
 -- index of its k-bucket and resetting its @timeoutCount@ and @timestamp@,
--- then return a @('Bucket' ¡­ ¡­) :: 'NodeTreeElem' i@.
+-- then return a @('Bucket' â€¦ â€¦) :: 'NodeTreeElem' i@.
 refresh
   :: Node
   -> Timestamp
@@ -244,7 +244,7 @@ insert tree node currentTime = do
         --  I peered at this code for ~30-40 mins.
         --  I clearly don't understand what the reason was to
         --  introduce `depth < 5`.
-        --  Maybe some kind of ¡À1, to not care about a corner case?
+        --  Maybe some kind of Â±1, to not care about a corner case?
         let bucketMayBeSplit
               = ((depth < 5) || valid) && (depth <= maxDepth)
 
@@ -293,7 +293,7 @@ insert tree node currentTime = do
 
 -- |
 -- Split the k-bucket the specified ID would reside in into two and return
--- a @('Split' ¡­ ¡­) :: 'NodeTreeElem' i@ wrapped in a 'NodeTree'.
+-- a @('Split' â€¦ â€¦) :: 'NodeTreeElem' i@ wrapped in a 'NodeTree'.
 split :: NodeTree -> Ident -> WithConfig NodeTree
 split tree splitId = modifyAt tree splitId g
   where
