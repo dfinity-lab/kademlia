@@ -17,8 +17,8 @@ module Tests.Types
 
 import           Test.QuickCheck         ()
 
-import           DFINITY.Discovery.Types (Ident (..), fromByteStruct,
-                                          toByteStruct)
+import           DFINITY.Discovery.Types
+                 (Ident (..), fromByteStruct, toByteStruct)
 
 --------------------------------------------------------------------------------
 

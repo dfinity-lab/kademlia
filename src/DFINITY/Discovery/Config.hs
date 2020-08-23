@@ -30,8 +30,8 @@ import           Control.Monad.Identity      (Identity, runIdentity)
 import           Control.Monad.IO.Class      (MonadIO)
 import           Control.Monad.Reader        (ReaderT, ask, runReaderT)
 import           Control.Monad.Trans         (MonadTrans)
-import           DFINITY.Discovery.Signature (SignatureScheme,
-                                              trivialSignatureScheme)
+import           DFINITY.Discovery.Signature
+                 (SignatureScheme, trivialSignatureScheme)
 import           DFINITY.Discovery.Utils     (hour, minute)
 
 --------------------------------------------------------------------------------
@@ -68,7 +68,7 @@ data KademliaConfig
       --   FIXME: this should be a type of positive numbers
     , configNumLookupNodes  :: !Int
       -- ^ The number of nodes to look in parallel during a lookup; this is
-      --   also known as Î± in the paper.
+      --   also known as ¦Á in the paper.
       --
       --   FIXME: this should be a type of positive numbers
     , configMsgSizeLimit    :: !Int

@@ -33,26 +33,27 @@ module DFINITY.Discovery.Types
   ) where
 
 --------------------------------------------------------------------------------
-import           Data.Vector.Unboxed      (Vector, convert)
-import           Data.Vector.Storable.ByteString 
+import           Data.Bit.ThreadSafe
+                 (Bit, castFromWords8, cloneToWords8, zipBits)
+import           Data.Bits                       (xor)
+import           Data.Function                   (on)
+import           Data.Int                        (Int64)
+import           Data.List                       (sortBy)
+import           Data.Vector.Storable.ByteString
                  (byteStringToVector, vectorToByteString)
-import           Data.Bit.ThreadSafe      (cloneToWords8, castFromWords8, Bit, zipBits)
-import           Data.Bits                (xor)
-import           Data.Function            (on)
-import           Data.Int                 (Int64)
-import           Data.List                (sortBy)
-import           Data.Word                (Word16, Word8)
-import           GHC.Generics             (Generic)
-import           Network.Socket           (PortNumber, SockAddr (..))
+import           Data.Vector.Unboxed             (Vector, convert)
+import           Data.Word                       (Word16, Word8)
+import           GHC.Generics                    (Generic)
+import           Network.Socket                  (PortNumber, SockAddr (..))
 
-import           Data.ByteString          (ByteString)
+import           Data.ByteString                 (ByteString)
 
-import           Data.IP                  (IP)
-import qualified Data.IP                  as IP
+import           Data.IP                         (IP)
+import qualified Data.IP                         as IP
 
-import           Codec.Serialise          (Serialise, decode, encode)
-import           Codec.Serialise.Decoding (decodeListLen, decodeWord)
-import           Codec.Serialise.Encoding (encodeListLen, encodeWord)
+import           Codec.Serialise                 (Serialise, decode, encode)
+import           Codec.Serialise.Decoding        (decodeListLen, decodeWord)
+import           Codec.Serialise.Encoding        (encodeListLen, encodeWord)
 
 --------------------------------------------------------------------------------
 

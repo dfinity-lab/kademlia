@@ -25,39 +25,35 @@ module DFINITY.Discovery.Networking
 
 --------------------------------------------------------------------------------
 
-import           Control.Concurrent           (ThreadId, forkIO, killThread,
-                                               yield)
-import           Control.Concurrent.Chan      (Chan, newChan, readChan,
-                                               writeChan)
-import           Control.Concurrent.MVar      (MVar, isEmptyMVar, newEmptyMVar,
-                                               takeMVar, tryPutMVar)
+import           Control.Concurrent
+                 (ThreadId, forkIO, killThread, yield)
+import           Control.Concurrent.Chan
+                 (Chan, newChan, readChan, writeChan)
+import           Control.Concurrent.MVar
+                 (MVar, isEmptyMVar, newEmptyMVar, takeMVar, tryPutMVar)
 import           Control.Exception            (SomeException, catch, finally)
 import           Control.Monad                (forM_, forever, unless, void)
 import qualified Data.ByteString              as BS
-import           Network.Socket               (AddrInfo (..),
-                                               AddrInfoFlag (AI_PASSIVE),
-                                               Family (..), Socket,
-                                               SocketOption (ReuseAddr),
-                                               SocketType (Datagram),
-                                               addrAddress, addrFlags, bind,
-                                               close, defaultHints,
-                                               defaultProtocol, getAddrInfo,
-                                               setSocketOption, socket,
-                                               withSocketsDo)
+import           Network.Socket
+                 (AddrInfo (..), AddrInfoFlag (AI_PASSIVE), Family (..),
+                 Socket, SocketOption (ReuseAddr), SocketType (Datagram),
+                 addrAddress, addrFlags, bind, close, defaultHints,
+                 defaultProtocol, getAddrInfo, setSocketOption, socket,
+                 withSocketsDo)
 import qualified Network.Socket.ByteString    as S
 -- | import           System.IO.Error              (ioError, userError)
 
 import           Data.IP                      (IP)
 import           Network.Socket               (PortNumber)
 
-import           DFINITY.Discovery.Config     (KademliaConfig (..),
-                                               defaultConfig)
+import           DFINITY.Discovery.Config
+                 (KademliaConfig (..), defaultConfig)
 import           DFINITY.Discovery.Protocol   (parse, serialize)
-import           DFINITY.Discovery.ReplyQueue (Reply (..), ReplyQueue (replyQueueDispatchChan),
-                                               ReplyRegistration, flush,
-                                               register)
-import           DFINITY.Discovery.Types      (Command, Ident, Peer (..),
-                                               toPeer)
+import           DFINITY.Discovery.ReplyQueue
+                 (Reply (..), ReplyQueue (replyQueueDispatchChan),
+                 ReplyRegistration, flush, register)
+import           DFINITY.Discovery.Types
+                 (Command, Ident, Peer (..), toPeer)
 
 --------------------------------------------------------------------------------
 

@@ -26,16 +26,16 @@ import           Data.List                  (nubBy)
 import           Data.Word                  (Word16)
 import           Network.Socket             (PortNumber)
 
-import           Test.QuickCheck            (Arbitrary (..), oneof, suchThat,
-                                             vectorOf)
+import           Test.QuickCheck
+                 (Arbitrary (..), oneof, suchThat, vectorOf)
 import           Test.QuickCheck.Instances  ()
 
 import           Data.IP                    (IP (IPv4, IPv6))
 import qualified Data.IP                    as IP
 
 import           DFINITY.Discovery.Instance (BanState (..))
-import           DFINITY.Discovery.Types    (Command (..), Ident (..),
-                                             Node (..), Peer (..), Signal (..))
+import           DFINITY.Discovery.Types
+                 (Command (..), Ident (..), Node (..), Peer (..), Signal (..))
 
 --------------------------------------------------------------------------------
 

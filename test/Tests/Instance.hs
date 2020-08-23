@@ -32,27 +32,25 @@ import qualified Data.Map                     as M
 import           Data.Maybe                   (fromJust, isJust)
 
 import           Data.List                    (sort)
-import           Test.HUnit                   (Assertion, assertEqual,
-                                               assertFailure)
-import           Test.QuickCheck              (Property, arbitrary, conjoin,
-                                               (===))
-import           Test.QuickCheck.Monadic      (PropertyM, assert, monadicIO,
-                                               pick, run)
+import           Test.HUnit
+                 (Assertion, assertEqual, assertFailure)
+import           Test.QuickCheck
+                 (Property, arbitrary, conjoin, (===))
+import           Test.QuickCheck.Monadic
+                 (PropertyM, assert, monadicIO, pick, run)
 
 import           DFINITY.Discovery            (close, create)
-import           DFINITY.Discovery.Instance   (BanState (..),
-                                               KademliaInstance (..),
-                                               KademliaSnapshot (..), banNode,
-                                               dumpPeers, isNodeBanned,
-                                               lookupNode)
-import           DFINITY.Discovery.Networking (closeK, openOn, send,
-                                               startRecvProcess)
-import           DFINITY.Discovery.ReplyQueue (Reply (..), ReplyQueue (..),
-                                               emptyReplyQueue)
+import           DFINITY.Discovery.Instance
+                 (BanState (..), KademliaInstance (..), KademliaSnapshot (..),
+                 banNode, dumpPeers, isNodeBanned, lookupNode)
+import           DFINITY.Discovery.Networking
+                 (closeK, openOn, send, startRecvProcess)
+import           DFINITY.Discovery.ReplyQueue
+                 (Reply (..), ReplyQueue (..), emptyReplyQueue)
 import qualified DFINITY.Discovery.Tree       as T
-import           DFINITY.Discovery.Types      (Command (..), Ident (..),
-                                               Node (..), Peer (..),
-                                               Signal (..), Timestamp)
+import           DFINITY.Discovery.Types
+                 (Command (..), Ident (..), Node (..), Peer (..), Signal (..),
+                 Timestamp)
 
 import           Tests.TestTypes              (NodeBunch (..))
 import           Tests.Tree                   (withTree)

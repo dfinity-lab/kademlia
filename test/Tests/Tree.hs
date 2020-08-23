@@ -31,14 +31,14 @@ import           Data.Maybe               (isJust)
 import           Data.Ord                 (comparing)
 import qualified Data.Set                 as S
 import           System.Random            (mkStdGen)
-import           Test.QuickCheck          (Property, conjoin, counterexample,
-                                           property)
+import           Test.QuickCheck
+                 (Property, conjoin, counterexample, property)
 
-import           DFINITY.Discovery.Config (WithConfig, configK, defaultConfig,
-                                           usingConfig)
+import           DFINITY.Discovery.Config
+                 (WithConfig, configK, defaultConfig, usingConfig)
 import qualified DFINITY.Discovery.Tree   as T
-import           DFINITY.Discovery.Types  (Ident, Node (..), Timestamp,
-                                           distance)
+import           DFINITY.Discovery.Types
+                 (Ident, Node (..), Timestamp, distance)
 
 import           Tests.TestTypes          (NodeBunch (..))
 

@@ -41,9 +41,9 @@ module DFINITY.Discovery.Tree
 
 --------------------------------------------------------------------------------
 import           Data.Bit.ThreadSafe      (unBit)
-import           Data.Vector.Unboxed      ((!), null, head, tail)
+import           Data.Vector.Unboxed      (head, null, tail, (!))
 import qualified Data.Vector.Unboxed      as V (length)
-import           Prelude                  hiding (lookup, null, head, tail)
+import           Prelude                  hiding (head, lookup, null, tail)
 
 import           Control.Arrow            (second)
 import           Control.Monad.Random     (evalRand)
@@ -197,7 +197,7 @@ handleTimeout currentTime tree peer = do
 -- |
 -- Refresh the node corresponding to a supplied ID by placing it at the first
 -- index of its k-bucket and resetting its @timeoutCount@ and @timestamp@,
--- then return a @('Bucket' â€¦ â€¦) :: 'NodeTreeElem' i@.
+-- then return a @('Bucket' ¡­ ¡­) :: 'NodeTreeElem' i@.
 refresh
   :: Node
   -> Timestamp
@@ -244,7 +244,7 @@ insert tree node currentTime = do
         --  I peered at this code for ~30-40 mins.
         --  I clearly don't understand what the reason was to
         --  introduce `depth < 5`.
-        --  Maybe some kind of Â±1, to not care about a corner case?
+        --  Maybe some kind of ¡À1, to not care about a corner case?
         let bucketMayBeSplit
               = ((depth < 5) || valid) && (depth <= maxDepth)
 
@@ -293,7 +293,7 @@ insert tree node currentTime = do
 
 -- |
 -- Split the k-bucket the specified ID would reside in into two and return
--- a @('Split' â€¦ â€¦) :: 'NodeTreeElem' i@ wrapped in a 'NodeTree'.
+-- a @('Split' ¡­ ¡­) :: 'NodeTreeElem' i@ wrapped in a 'NodeTree'.
 split :: NodeTree -> Ident -> WithConfig NodeTree
 split tree splitId = modifyAt tree splitId g
   where
@@ -313,7 +313,7 @@ split tree splitId = modifyAt tree splitId g
                            let bit = bs ! i
                            (left, right) <- splitBucket i f ns
                            pure $ case (unBit bit) of
-                                    True -> (left, n : right)
+                                    True  -> (left, n : right)
                                     False -> (n : left, right)
 
 --------------------------------------------------------------------------------
@@ -366,7 +366,7 @@ findClosest (NodeTree idStruct treeElem _) nid n = do
           -- Take the closest nodes from the left child first and if those
           -- aren't enough, take the rest from the right.
           Split left right -> do
-            case (not (null is) && not (null ts)) of 
+            case (not (null is) && not (null ts)) of
               True -> do
                     let irest = tail is
                         trest = tail ts
@@ -408,15 +408,15 @@ toView (NodeTree bs treeElems _) = go bs treeElems []
     -- If the bit is 0, go left, then right
     go is sp = do
        case sp of
-          Split left right -> do 
+          Split left right -> do
                 case (null is) of
                          False -> do
                             let ris = tail is
                             case (unBit . head $ is) of
                                 False -> go ris left . go ris right
-                                True -> go ris right . go ris left
+                                True  -> go ris right . go ris left
                          True -> do
-                            error "toView: unexpected Split"              
+                            error "toView: unexpected Split"
           Bucket b _ -> do
                 (map (second pingInfoLastSeen) b :)
 --------------------------------------------------------------------------------
@@ -525,7 +525,7 @@ modifyApplyAt (NodeTree idStruct treeElem peers) nid f = do
                                   True -> do
                                      (new, ms, val) <- go irest trest (depth + 1) (valid &&     (unBit i)) right
                                      pure (Split left new, ms, val)
-                        False -> do                  
+                        False -> do
                               error "Fundamental error in @go@ function in 'modifyApplyAt'"
 
   let targetStruct = toByteStruct nid

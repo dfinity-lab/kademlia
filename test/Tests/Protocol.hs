@@ -18,12 +18,12 @@ module Tests.Protocol
 import           Control.Arrow              (left)
 
 import qualified Data.ByteString            as B
-import           Test.QuickCheck            (Property, conjoin, counterexample,
-                                             (===), (==>))
+import           Test.QuickCheck
+                 (Property, conjoin, counterexample, (===), (==>))
 
 import           DFINITY.Discovery.Protocol (parse, serialize)
-import           DFINITY.Discovery.Types    (Command (..), Node (..),
-                                             Signal (..))
+import           DFINITY.Discovery.Types
+                 (Command (..), Node (..), Signal (..))
 
 --------------------------------------------------------------------------------
 

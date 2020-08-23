@@ -29,8 +29,8 @@ import qualified Data.ByteString.Lazy    as LBS
 import qualified Codec.CBOR.Write        as CBOR
 import           Codec.Serialise         (Serialise, encode)
 
-import           DFINITY.Discovery.Types (Command (RETURN_NODES),
-                                          Ident (Ident, fromIdent), Node)
+import           DFINITY.Discovery.Types
+                 (Command (RETURN_NODES), Ident (Ident, fromIdent), Node)
 
 --------------------------------------------------------------------------------
 

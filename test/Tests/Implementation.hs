@@ -32,9 +32,8 @@ import           Test.QuickCheck.Monadic    (PropertyM, assert, monadicIO, run)
 
 import qualified DFINITY.Discovery          as K
 import           DFINITY.Discovery.Config   (defaultK, defaultRoutingSharingN)
-import           DFINITY.Discovery.Instance (BanState (..),
-                                             KademliaInstance (..),
-                                             KademliaState (..))
+import           DFINITY.Discovery.Instance
+                 (BanState (..), KademliaInstance (..), KademliaState (..))
 import qualified DFINITY.Discovery.Tree     as T
 import           DFINITY.Discovery.Types    (Ident (..), Node (..), Peer (..))
 

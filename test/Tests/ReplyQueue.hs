@@ -22,13 +22,11 @@ import           Data.Maybe                   (isJust)
 import           Test.QuickCheck              (Property)
 import           Test.QuickCheck.Monadic      (assert, monadicIO, pre, run)
 
-import           DFINITY.Discovery.ReplyQueue (Reply (..),
-                                               ReplyRegistration (..),
-                                               ReplyType (..), dispatch,
-                                               emptyReplyQueue, register,
-                                               replyQueueQueue)
-import           DFINITY.Discovery.Types      (Command (..), Node (..),
-                                               Signal (..))
+import           DFINITY.Discovery.ReplyQueue
+                 (Reply (..), ReplyRegistration (..), ReplyType (..), dispatch,
+                 emptyReplyQueue, register, replyQueueQueue)
+import           DFINITY.Discovery.Types
+                 (Command (..), Node (..), Signal (..))
 
 --------------------------------------------------------------------------------
 
