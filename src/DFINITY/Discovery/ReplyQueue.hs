@@ -39,9 +39,9 @@ import           Control.Monad           (forM_)
 import           Data.List               (delete, find)
 import           Data.Maybe              (isJust)
 
-import           DFINITY.Discovery.Types
-                 (Command (..), Ident, Node (nodePeer), Peer,
-                 Signal (signalCommand, signalSource))
+import           DFINITY.Discovery.Types (Command (..), Ident, Node (nodePeer),
+                                          Peer,
+                                          Signal (signalCommand, signalSource))
 import           DFINITY.Discovery.Utils (threadDelay)
 
 --------------------------------------------------------------------------------

@@ -17,19 +17,19 @@ import           Test.Tasty            (TestTree, defaultMain, testGroup)
 import qualified Test.Tasty.HUnit      as HU
 import qualified Test.Tasty.QuickCheck as QC
 
-import           Tests.Implementation
-                 (joinBannedCheck, joinCheck, joinFullCheck, lookupNodesCheck,
-                 nodeDownCheck)
-import           Tests.Instance
-                 (banNodeCheck, handlesPingCheck, isNodeBannedCheck,
-                 snapshotCheck, trackingKnownPeersCheck)
+import           Tests.Implementation  (joinBannedCheck, joinCheck,
+                                        joinFullCheck, lookupNodesCheck,
+                                        nodeDownCheck)
+import           Tests.Instance        (banNodeCheck, handlesPingCheck,
+                                        isNodeBannedCheck, snapshotCheck,
+                                        trackingKnownPeersCheck)
 import           Tests.Networking      (expectCheck, sendCheck)
 import           Tests.Protocol        (lengthCheck, parseCheck)
 import           Tests.ReplyQueue      (removedCheck, repliesCheck)
-import           Tests.Tree
-                 (bucketSizeCheck, deleteCheck, findClosestCheck, insertCheck,
-                 pickupNotClosestDifferentCheck, refreshCheck, splitCheck,
-                 viewCheck)
+import           Tests.Tree            (bucketSizeCheck, deleteCheck,
+                                        findClosestCheck, insertCheck,
+                                        pickupNotClosestDifferentCheck,
+                                        refreshCheck, splitCheck, viewCheck)
 import           Tests.Types           (fromByteStructCheck, toByteStructCheck)
 
 --------------------------------------------------------------------------------

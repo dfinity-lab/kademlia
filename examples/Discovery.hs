@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import           Control.Monad             (when)
-import           Control.Monad.Random
-                 (Rand, RandomGen, evalRand, evalRandIO, getRandom)
+import           Control.Monad.Random      (Rand, RandomGen, evalRand,
+                                            evalRandIO, getRandom)
 import           Control.Monad.Trans       (lift)
 import qualified Control.Monad.Trans.State as S
 import           Data.Binary               (Binary (..), getWord8, putWord8)

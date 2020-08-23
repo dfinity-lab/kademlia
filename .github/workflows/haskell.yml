@@ -1,34 +1,34 @@
-name: Haskell CI
+name:            Haskell CI
 
 on:
   push:
-    branches: [ dev ]
+    branches:    [ dev ]
   pull_request:
-    branches: [ dev ]
+    branches:    [ dev ]
 
 jobs:
   build-test:
-    name: Test on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name:        Test on ${{ matrix.os }}
+    runs-on:     ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macOS-latest]
+        os:      [ubuntu-latest, macOS-latest]
 
     steps:
-    - uses: actions/checkout@v2
-    - uses: timbod7/setup-stack@master
-    - name: Cache multiple paths
-      uses: actions/cache@v2
+    - uses:      actions/checkout@v2
+    - uses:      timbod7/setup-stack@master
+    - name:      Cache multiple paths
+      uses:      actions/cache@v2
       with:
-       path: |
+       path:     |
         ~/.stack
-       key: ${{ runner.os }}-${{ hashFiles('dfinity-discovery.cabal') }}
+       key:      ${{ runner.os }}-${{ hashFiles('dfinity-discovery.cabal') }}
 
-    - name: build
-      run: |
+    - name:      build
+      run:       |
         rm -rf ~/.stack/setup-exe*
         stack init
         stack build
         
-    - name: test
-      run: stack test
+    - name:      test
+      run:       stack test

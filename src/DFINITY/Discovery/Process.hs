@@ -17,8 +17,8 @@ module DFINITY.Discovery.Process
 
 --------------------------------------------------------------------------------
 
-import           Control.Concurrent
-                 (ThreadId, forkIO, killThread, myThreadId)
+import           Control.Concurrent           (ThreadId, forkIO, killThread,
+                                               myThreadId)
 import           Control.Concurrent.Chan      (Chan, readChan)
 import           Control.Concurrent.STM       (atomically, readTVar, writeTVar)
 import           Control.Exception            (catch)
@@ -32,21 +32,24 @@ import           Data.Time.Clock.POSIX        (getPOSIXTime)
 import           System.Random                (newStdGen)
 
 import           DFINITY.Discovery.Config     (KademliaConfig (..), usingConfig)
-import           DFINITY.Discovery.Instance
-                 (KademliaInstance (..), KademliaState (..), deleteValue,
-                 insertNode, insertValue, isNodeBanned, lookupNodeByPeer,
-                 lookupValue)
-import           DFINITY.Discovery.Networking
-                 (KademliaHandle (..), expect, handleLogError', send,
-                 startRecvProcess)
-import           DFINITY.Discovery.ReplyQueue
-                 (Reply (..), ReplyQueue, ReplyRegistration (..),
-                 ReplyType (..), dispatch, expectedReply,
-                 replyQueueDispatchChan, replyQueueRequestChan)
+import           DFINITY.Discovery.Instance   (KademliaInstance (..),
+                                               KademliaState (..), deleteValue,
+                                               insertNode, insertValue,
+                                               isNodeBanned, lookupNodeByPeer,
+                                               lookupValue)
+import           DFINITY.Discovery.Networking (KademliaHandle (..), expect,
+                                               handleLogError', send,
+                                               startRecvProcess)
+import           DFINITY.Discovery.ReplyQueue (Reply (..), ReplyQueue,
+                                               ReplyRegistration (..),
+                                               ReplyType (..), dispatch,
+                                               expectedReply,
+                                               replyQueueDispatchChan,
+                                               replyQueueRequestChan)
 import qualified DFINITY.Discovery.Tree       as T
-import           DFINITY.Discovery.Types
-                 (Command (..), Ident, Node (..), Peer (..), Signal (..),
-                 sortByDistanceTo)
+import           DFINITY.Discovery.Types      (Command (..), Ident, Node (..),
+                                               Peer (..), Signal (..),
+                                               sortByDistanceTo)
 import           DFINITY.Discovery.Utils      (threadDelay)
 
 --------------------------------------------------------------------------------

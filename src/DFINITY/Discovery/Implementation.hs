@@ -40,15 +40,15 @@ import qualified Data.Map.Strict              as Map
 import           Data.Word                    (Word8)
 
 import           DFINITY.Discovery.Config     (KademliaConfig (..), usingConfig)
-import           DFINITY.Discovery.Instance
-                 (KademliaInstance (..), KademliaState (..), insertNode,
-                 isNodeBanned)
+import           DFINITY.Discovery.Instance   (KademliaInstance (..),
+                                               KademliaState (..), insertNode,
+                                               isNodeBanned)
 import           DFINITY.Discovery.Networking (expect, send)
 import           DFINITY.Discovery.ReplyQueue
 import qualified DFINITY.Discovery.Tree       as T
-import           DFINITY.Discovery.Types
-                 (Command (..), Ident, Node (..), Peer, Signal (..), Value,
-                 sortByDistanceTo)
+import           DFINITY.Discovery.Types      (Command (..), Ident, Node (..),
+                                               Peer, Signal (..), Value,
+                                               sortByDistanceTo)
 
 --------------------------------------------------------------------------------
 

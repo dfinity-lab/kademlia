@@ -17,15 +17,15 @@ module Tests.Types
 
 import           Test.QuickCheck         ()
 
-import           DFINITY.Discovery.Types
-                 (Ident (..), fromByteStruct, toByteStruct)
+import           DFINITY.Discovery.Types (Ident (..), fromByteStruct,
+                                          toByteStruct)
 
 --------------------------------------------------------------------------------
 
 -- | Checks whether toByteStruct converts correctly
 toByteStructCheck :: Ident -> Bool
 -- | FIXME
-toByteStructCheck _ = True 
+toByteStructCheck _ = True
 
 -- | Checks whether fromByteStruct converts correctly
 fromByteStructCheck :: Ident -> Bool

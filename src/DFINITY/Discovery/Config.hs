@@ -30,8 +30,8 @@ import           Control.Monad.Identity      (Identity, runIdentity)
 import           Control.Monad.IO.Class      (MonadIO)
 import           Control.Monad.Reader        (ReaderT, ask, runReaderT)
 import           Control.Monad.Trans         (MonadTrans)
-import           DFINITY.Discovery.Signature
-                 (SignatureScheme, trivialSignatureScheme)
+import           DFINITY.Discovery.Signature (SignatureScheme,
+                                              trivialSignatureScheme)
 import           DFINITY.Discovery.Utils     (hour, minute)
 
 --------------------------------------------------------------------------------

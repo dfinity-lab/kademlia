@@ -51,12 +51,12 @@ import qualified Data.Map.Lazy                as Map
 import           Data.IP                      (IP)
 import           Network.Socket               (PortNumber)
 
-import           DFINITY.Discovery.Config
-                 (KademliaConfig, defaultConfig, usingConfig)
+import           DFINITY.Discovery.Config     (KademliaConfig, defaultConfig,
+                                               usingConfig)
 import           DFINITY.Discovery.Networking (KademliaHandle)
 import qualified DFINITY.Discovery.Tree       as T
-import           DFINITY.Discovery.Types
-                 (Ident, Node (Node, nodePeer), Peer (Peer), Timestamp, Value)
+import           DFINITY.Discovery.Types      (Ident, Node (Node, nodePeer),
+                                               Peer (Peer), Timestamp, Value)
 
 --------------------------------------------------------------------------------
 

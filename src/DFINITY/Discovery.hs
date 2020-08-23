@@ -21,7 +21,7 @@
 --
 -- = How to use it
 --
--- To get started with this library, first import it. 
+-- To get started with this library, first import it.
 --
 -- > import DFINITY.Discovery (close, create)
 -- > import DFINITY.Discovery.Types (Ident (..), Peer (..), Value (..))

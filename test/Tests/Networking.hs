@@ -22,18 +22,17 @@ module Tests.Networking
 import           Control.Concurrent.Chan      (Chan, newChan, readChan)
 import           Data.Maybe                   (isJust)
 import           Test.QuickCheck              (Gen, Property, arbitrary)
-import           Test.QuickCheck.Monadic
-                 (PropertyM, assert, monadicIO, pick, pre, run)
+import           Test.QuickCheck.Monadic      (PropertyM, assert, monadicIO,
+                                               pick, pre, run)
 
-import           DFINITY.Discovery.Networking
-                 (KademliaHandle (..), closeK, expect, openOn, send,
-                 startRecvProcess)
-import           DFINITY.Discovery.ReplyQueue
-                 (Reply (..), ReplyQueue (..),
-                 ReplyRegistration (ReplyRegistration), ReplyType (..),
-                 dispatch, emptyReplyQueue)
-import           DFINITY.Discovery.Types
-                 (Command (..), Ident, Node (..), Peer (..), Signal (..))
+import           DFINITY.Discovery.Networking (KademliaHandle (..), closeK,
+                                               expect, openOn, send,
+                                               startRecvProcess)
+import           DFINITY.Discovery.ReplyQueue (Reply (..), ReplyQueue (..), ReplyRegistration (ReplyRegistration),
+                                               ReplyType (..), dispatch,
+                                               emptyReplyQueue)
+import           DFINITY.Discovery.Types      (Command (..), Ident, Node (..),
+                                               Peer (..), Signal (..))
 
 import           Tests.TestTypes              ()
 
