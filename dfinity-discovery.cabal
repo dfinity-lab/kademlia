@@ -111,6 +111,8 @@ test-suite library-test
                      , time                 >= 1.6
                      , transformers         >= 0.3
                      , transformers-compat  >= 0.3.3
+                     , bitvec
+                     , vector
   default-language:    Haskell2010
   ghc-options:         -Wall -fno-warn-orphans -O2
 
