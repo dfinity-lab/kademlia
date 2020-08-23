@@ -31,6 +31,7 @@ jobs:
         stylish-haskell src/DFINITY/*.hs src/DFINITY/Discovery/*.hs \
                   src/DFINITY/Discovery/Protocol/*.hs examples/*.hs \
                   test/*.hs test/Tests/*.hs *.hs
+        stack init
         stack build
     - name: test
       run: |
