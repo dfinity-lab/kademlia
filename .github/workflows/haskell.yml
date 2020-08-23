@@ -27,8 +27,8 @@ jobs:
     - name: build
       run: |
         rm -rf ~/.stack/setup-exe*
-        curl -sL https://raw.github.com/jaspervdj/stylish-haskell/master/scripts/latest.sh | sh -s \
-                  src/DFINITY/*.hs src/DFINITY/Discovery/*.hs \
+        stack install stylish-haskell
+        stylish-haskell src/DFINITY/*.hs src/DFINITY/Discovery/*.hs \
                   src/DFINITY/Discovery/Protocol/*.hs examples/*.hs \
                   test/*.hs test/Tests/*.hs *.hs 2>&1 >/dev/null
         stack init
