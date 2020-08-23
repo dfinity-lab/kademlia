@@ -68,7 +68,7 @@ data KademliaConfig
       --   FIXME: this should be a type of positive numbers
     , configNumLookupNodes  :: !Int
       -- ^ The number of nodes to look in parallel during a lookup; this is
-      --   also known as ¦Á in the paper.
+      --   also known as Î± in the paper.
       --
       --   FIXME: this should be a type of positive numbers
     , configMsgSizeLimit    :: !Int
