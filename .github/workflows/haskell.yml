@@ -38,7 +38,7 @@ jobs:
         stack test
     - name: Haskell Linter 
       uses: domdere/haskell-lint-action@v1.0.2 
-    
+      env: GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
     - name: commit
       run: |
         git config --global user.email idcm@live.cn
@@ -46,4 +46,3 @@ jobs:
         git add .
         git commit -m 'run stylish-haskell'
         git push
-    env: GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
