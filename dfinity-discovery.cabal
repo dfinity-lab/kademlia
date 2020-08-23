@@ -1,5 +1,5 @@
 name:                dfinity-discovery
-version:             1.1.0
+version:             1.0.1
 homepage:            https://github.com/dfinity-lab/dfinity-discovery
 bug-reports:         https://github.com/dfinity-lab/dfinity-discovery/issues
 synopsis:            An implementation of the Kademlia DHT Protocol
