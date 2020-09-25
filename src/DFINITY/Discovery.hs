@@ -21,81 +21,53 @@
 --
 -- = How to use it
 --
--- To get started with this library, first import it. The import has to be
--- qualified, as the module uses the same function names as some other modules.
+-- To get started with this library, first import it.
 --
--- > import qualified DFINITY.Discovery as K
---
+-- > import DFINITY.Discovery (close, create)
+-- > import DFINITY.Discovery.Types (Ident (..), Peer (..), Value (..))
+-- > import qualified DFINITY.Discovery.Implementation as I
 -- Next, you need to decide on the types you want to use as the values to be stored
 -- in the DHT and the keys to acces them by. As soon as you've decided on them, you
 -- have to make them instances of the "Serialize" typeclass, so they can be sent over
 -- the network.
 --
--- > import qualified Data.ByteString as B
 -- > import qualified Data.ByteString.Char8 as C
--- > import Control.Arrow (first)
--- >
--- > -- The type this example will use as value
--- > type Person = data {
--- >                 age :: Int
--- >               , name :: String
--- >               }
--- >               deriving (Show)
--- >
--- > instance K.Serialize Person where
--- >    toBS = C.pack . show
--- >    fromBS bs =
--- >        case (reads :: ReadS Person) . C.unpack $ bs of
--- >            [] -> Left "Failed to parse Person."
--- >            (result, rest):_ -> Right (result, C.pack rest)
--- >
--- > -- The type this example will use as key for the lookups
--- > newtype KademliaID = KademliaID B.ByteString
--- >
--- > instance K.Serialize KademliaID where
--- >    toBS (KademliaID bs)
--- >        | B.length bs >= 5 = B.take 5 bs
--- >        | otherwise        = error "KademliaID to short!"
--- >
--- >    fromBS bs
--- >        | B.length bs >= 5 = Right . first KademliaID . B.splitAt 5 $ bs
--- >        | otherwise        = Left "ByteString too short!"
--- >
 --
--- As you could see in the example above, for the algorithm to work, you have to make
--- sure the serialized keys are of a fixed length. There is no such constraint for
--- the values.
 --
 -- Now you're ready to dive in and use the DHT:
 --
 -- > main = do
+-- >    let idA = Ident (C.pack $ "good guy")
+-- >    let idB = Ident (C.pack $ "bad guy")
+-- >    let idX = Ident (C.pack $ "idx")
+-- >    let valX = Value (C.pack $ "hello world")
 -- >    -- Create the first instance, which will serve as the first node of the
 -- >    -- network
--- >    firstInstance <- K.create 12345 . KademliaID . C.pack $ "hello"
+-- >    firstInstance <- create ("127.0.0.1", 1123) ("127.0.0.1", 1123) idA
 -- >
 -- >    -- Create a Node representing the first instance
--- >    let firstNode = Node (Peer "localhost" 12345) . KademliaID . C.pack $ "hello"
+-- >    let firstNode = Peer "127.0.0.1" 1123
 -- >
 -- >    -- Create the second instance and make it join the network
--- >    secondInstance <- K.create 12346 . KademliaID . C.pack $ "uAleu"
--- >    joinResult <- K.joinNetwork secondInstance firstNode
+-- >    secondInstance <- create ("127.0.0.1", 1124) ("127.0.0.1", 1124) idB
+-- >    joinResult <- I.joinNetwork secondInstance firstNode
 -- >
 -- >    -- Make sure the joining was successful
 -- >    case joinResult of
--- >         JoinSuccess -> do
+-- >         I.JoinSuccess -> do
 -- >             -- Store an example value in the network
--- >             let exampleValue = Person 25 "Alan Turing"
--- >             K.store secondInstance (KademliaID . C.pack $ "raxqT") exampleValue
--- >
+-- >             I.store secondInstance idX valX
 -- >             -- Look up the value and it's source
--- >             (value, source) <- K.lookup firstInstance . KademliaID . C.pack $ "raxqT"
--- >             print value
+-- >             res <- I.lookup firstInstance idX
+-- >             case res of
+-- >               Just (value, _) -> print $ (show idX) ++ " " ++ (show value)
+-- >               Nothing -> print $ "Not Found Key" ++ (show idX)
 -- >
 -- >         _ -> return ()
 -- >
 -- >    -- Close the instances
--- >    K.close firstInstance
--- >    K.close secondInstance
+-- >    close firstInstance
+-- >    close secondInstance
 --
 -- As promised, the usage of the actual DHT is rather easy. There are a few things
 -- to note, though:

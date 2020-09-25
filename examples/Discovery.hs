@@ -11,7 +11,7 @@ import qualified Data.ByteString.Char8     as C
 import qualified DFINITY.Discovery         as K
 import qualified DFINITY.Discovery.Types   as K
 import           GHC.Conc                  (threadDelay)
-import           Network                   (PortNumber)
+import           Network.Socket            (PortNumber)
 import           System.Environment        (getArgs)
 import           System.Random             (mkStdGen)
 import           System.Random.Shuffle     (shuffleM)

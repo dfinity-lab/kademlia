@@ -23,7 +23,7 @@ module Tests.Implementation
 --------------------------------------------------------------------------------
 
 import           Control.Concurrent.STM     (atomically, readTVar)
-import           Control.Monad              (forM, forM_, mapM, zipWithM)
+import           Control.Monad              (forM, forM_, zipWithM)
 import qualified Data.ByteString.Char8      as BSC8
 
 import           Test.HUnit                 (Assertion, assertEqual)
